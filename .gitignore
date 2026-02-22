@@ -1,0 +1,25 @@
+# Roblox build artifacts
+*.rbxlx
+*.rbxl
+*.rbxmx
+*.rbxm
+
+# Wally packages (capital P — Wally's output directory)
+**/Packages/
+wally.lock
+
+# Rojo build output
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Secrets
+.env
+.roblosecurity
