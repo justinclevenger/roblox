@@ -6,10 +6,15 @@
 
 # Wally packages (capital P — Wally's output directory)
 **/Packages/
-wally.lock
+
+# Rojo sourcemaps (generated, not committed)
+sourcemap.json
 
 # Rojo build output
 build/
+
+# Selene generated Roblox std
+roblox.yml
 
 # OS files
 .DS_Store
