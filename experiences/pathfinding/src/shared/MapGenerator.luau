@@ -881,12 +881,16 @@ local function buildDoorFrame(
 		local trimThick = 0.3
 		local trimDepth = WALL_THICKNESS + 0.4
 		local trimColor = Color3.fromRGB(80, 60, 40)
+		local jambBottom = floorY + 0.1
+		local jambTop = floorY + doorHeight - trimThick
+		local jambHeight = jambTop - jambBottom
+		local jambCenterY = (jambBottom + jambTop) / 2
 		-- Left jamb
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_LJamb",
-			Vector3.new(trimThick, doorHeight, trimDepth),
-			Vector3.new(worldPos.X - doorWidth / 2, floorY + doorHeight / 2, wallZ),
+			Vector3.new(trimThick, jambHeight, trimDepth),
+			Vector3.new(worldPos.X - doorWidth / 2, jambCenterY, wallZ),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
@@ -894,17 +898,17 @@ local function buildDoorFrame(
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_RJamb",
-			Vector3.new(trimThick, doorHeight, trimDepth),
-			Vector3.new(worldPos.X + doorWidth / 2, floorY + doorHeight / 2, wallZ),
+			Vector3.new(trimThick, jambHeight, trimDepth),
+			Vector3.new(worldPos.X + doorWidth / 2, jambCenterY, wallZ),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
-		-- Header
+		-- Header (inside the opening, below the lintel)
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Header",
 			Vector3.new(doorWidth + trimThick * 2, trimThick, trimDepth),
-			Vector3.new(worldPos.X, floorY + doorHeight + trimThick / 2, wallZ),
+			Vector3.new(worldPos.X, floorY + doorHeight - trimThick / 2, wallZ),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
@@ -952,12 +956,16 @@ local function buildDoorFrame(
 		local trimThick = 0.3
 		local trimDepth = WALL_THICKNESS + 0.4
 		local trimColor = Color3.fromRGB(80, 60, 40)
+		local jambBottom = floorY + 0.1
+		local jambTop = floorY + doorHeight - trimThick
+		local jambHeight = jambTop - jambBottom
+		local jambCenterY = (jambBottom + jambTop) / 2
 		-- Left jamb (north side)
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_LJamb",
-			Vector3.new(trimDepth, doorHeight, trimThick),
-			Vector3.new(wallX, floorY + doorHeight / 2, worldPos.Z - doorWidth / 2),
+			Vector3.new(trimDepth, jambHeight, trimThick),
+			Vector3.new(wallX, jambCenterY, worldPos.Z - doorWidth / 2),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
@@ -965,17 +973,17 @@ local function buildDoorFrame(
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_RJamb",
-			Vector3.new(trimDepth, doorHeight, trimThick),
-			Vector3.new(wallX, floorY + doorHeight / 2, worldPos.Z + doorWidth / 2),
+			Vector3.new(trimDepth, jambHeight, trimThick),
+			Vector3.new(wallX, jambCenterY, worldPos.Z + doorWidth / 2),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
-		-- Header
+		-- Header (inside the opening, below the lintel)
 		makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Header",
 			Vector3.new(trimDepth, trimThick, doorWidth + trimThick * 2),
-			Vector3.new(wallX, floorY + doorHeight + trimThick / 2, worldPos.Z),
+			Vector3.new(wallX, floorY + doorHeight - trimThick / 2, worldPos.Z),
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
