@@ -41,17 +41,19 @@ local function isWalkable(position: Vector3): boolean
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	rayParams.FilterDescendantsInstances = {}
+	rayParams.RespectCanCollide = true -- ignore non-collidable parts (trim, decor)
 
-	-- Check for obstacles at this cell (cast a small box area)
-	local origin = position + Vector3.new(0, 5, 0)
-	local direction = Vector3.new(0, -10, 0)
+	-- Check for ground below this cell
+	local origin = position + Vector3.new(0, 8, 0)
+	local direction = Vector3.new(0, -12, 0)
 	local result = workspace:Raycast(origin, direction, rayParams)
 
 	if result then
 		-- There's ground here — now check for blocking obstacles above ground
+		-- Start above typical step height, check up to humanoid head height
 		local groundY = result.Position.Y
-		local obstacleOrigin = Vector3.new(position.X, groundY + 1, position.Z)
-		local obstacleDirection = Vector3.new(0, 4, 0) -- Check up to 4 studs above ground
+		local obstacleOrigin = Vector3.new(position.X, groundY + 2, position.Z)
+		local obstacleDirection = Vector3.new(0, 3, 0) -- Check 2-5 studs above ground
 		local obstacleResult = workspace:Raycast(obstacleOrigin, obstacleDirection, rayParams)
 
 		if obstacleResult then

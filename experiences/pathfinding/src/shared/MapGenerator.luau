@@ -877,7 +877,7 @@ local function buildDoorFrame(
 			color
 		)
 
-		-- Door frame trim (wooden jambs + header)
+		-- Door frame trim (wooden jambs + header) — non-collidable decoration
 		local trimThick = 0.3
 		local trimDepth = WALL_THICKNESS + 0.4
 		local trimColor = Color3.fromRGB(80, 60, 40)
@@ -886,7 +886,7 @@ local function buildDoorFrame(
 		local jambHeight = jambTop - jambBottom
 		local jambCenterY = (jambBottom + jambTop) / 2
 		-- Left jamb
-		makePart(
+		local lj = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_LJamb",
 			Vector3.new(trimThick, jambHeight, trimDepth),
@@ -894,8 +894,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		lj.CanCollide = false
 		-- Right jamb
-		makePart(
+		local rj = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_RJamb",
 			Vector3.new(trimThick, jambHeight, trimDepth),
@@ -903,8 +904,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		rj.CanCollide = false
 		-- Header (inside the opening, below the lintel)
-		makePart(
+		local hdr = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Header",
 			Vector3.new(doorWidth + trimThick * 2, trimThick, trimDepth),
@@ -912,8 +914,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		hdr.CanCollide = false
 		-- Metal threshold at floor level
-		makePart(
+		local thr = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Threshold",
 			Vector3.new(doorWidth + trimThick * 2, 0.3, trimDepth),
@@ -921,6 +924,7 @@ local function buildDoorFrame(
 			Enum.Material.Metal,
 			Color3.fromRGB(120, 120, 125)
 		)
+		thr.CanCollide = false
 	elseif dir == "east" or dir == "west" then
 		local wallX
 		if dir == "east" then
@@ -961,7 +965,7 @@ local function buildDoorFrame(
 			color
 		)
 
-		-- Door frame trim (wooden jambs + header)
+		-- Door frame trim (wooden jambs + header) — non-collidable decoration
 		local trimThick = 0.3
 		local trimDepth = WALL_THICKNESS + 0.4
 		local trimColor = Color3.fromRGB(80, 60, 40)
@@ -970,7 +974,7 @@ local function buildDoorFrame(
 		local jambHeight = jambTop - jambBottom
 		local jambCenterY = (jambBottom + jambTop) / 2
 		-- Left jamb (north side)
-		makePart(
+		local lj = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_LJamb",
 			Vector3.new(trimDepth, jambHeight, trimThick),
@@ -978,8 +982,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		lj.CanCollide = false
 		-- Right jamb (south side)
-		makePart(
+		local rj = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_RJamb",
 			Vector3.new(trimDepth, jambHeight, trimThick),
@@ -987,8 +992,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		rj.CanCollide = false
 		-- Header (inside the opening, below the lintel)
-		makePart(
+		local hdr = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Header",
 			Vector3.new(trimDepth, trimThick, doorWidth + trimThick * 2),
@@ -996,8 +1002,9 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		hdr.CanCollide = false
 		-- Metal threshold at floor level
-		makePart(
+		local thr = makePart(
 			parent,
 			"DoorTrim_" .. dir .. "_Threshold",
 			Vector3.new(trimDepth, 0.3, doorWidth + trimThick * 2),
@@ -1005,6 +1012,7 @@ local function buildDoorFrame(
 			Enum.Material.Metal,
 			Color3.fromRGB(120, 120, 125)
 		)
+		thr.CanCollide = false
 	end
 end
 
@@ -1226,8 +1234,9 @@ local function buildFloorParts(
 				local woodColor = Color3.fromRGB(90, 65, 45)
 				for _, door in cellData.doors do
 					local d = door.dir
+					local plank
 					if d == "north" then
-						makePart(
+						plank = makePart(
 							parent,
 							"DoorPlank_north",
 							Vector3.new(doorWidth, floorThickness, wallOffset),
@@ -1236,7 +1245,7 @@ local function buildFloorParts(
 							woodColor
 						)
 					elseif d == "south" then
-						makePart(
+						plank = makePart(
 							parent,
 							"DoorPlank_south",
 							Vector3.new(doorWidth, floorThickness, wallOffset),
@@ -1245,7 +1254,7 @@ local function buildFloorParts(
 							woodColor
 						)
 					elseif d == "east" then
-						makePart(
+						plank = makePart(
 							parent,
 							"DoorPlank_east",
 							Vector3.new(wallOffset, floorThickness, doorWidth),
@@ -1254,7 +1263,7 @@ local function buildFloorParts(
 							woodColor
 						)
 					elseif d == "west" then
-						makePart(
+						plank = makePart(
 							parent,
 							"DoorPlank_west",
 							Vector3.new(wallOffset, floorThickness, doorWidth),
@@ -1262,6 +1271,9 @@ local function buildFloorParts(
 							Enum.Material.WoodPlanks,
 							woodColor
 						)
+					end
+					if plank then
+						plank.CanCollide = false
 					end
 				end
 			end
