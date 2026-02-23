@@ -4,6 +4,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      experience:
+        description: "Experience to build/deploy (blank = auto-detect changed)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -26,72 +32,91 @@ jobs:
       - name: Check formatting
         run: stylua --check experiences/pathfinding/ packages/
 
-  build:
-    name: Build
+  detect:
+    name: Detect Changed Experiences
     runs-on: ubuntu-latest
-    needs: lint
     outputs:
-      changed: ${{ steps.detect.outputs.changed }}
+      experiences: ${{ steps.detect.outputs.experiences }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: detect
+        run: |
+          if [ -n "${{ inputs.experience }}" ]; then
+            MATRIX='["${{ inputs.experience }}"]'
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD -- experiences/ \
+              | cut -d/ -f2 | sort -u | grep -v '^$' || true)
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- experiences/ \
+              | cut -d/ -f2 | sort -u | grep -v '^$' || true)
+          fi
+
+          if [ -z "${MATRIX:-}" ]; then
+            if [ -z "$CHANGED" ]; then
+              echo "No experiences changed"
+              echo 'experiences=[]' >> "$GITHUB_OUTPUT"
+              echo 'has_changes=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            MATRIX=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          fi
+
+          echo "experiences=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "Will process: $MATRIX"
+
+  build:
+    name: Build (${{ matrix.experience }})
+    runs-on: ubuntu-latest
+    needs: [lint, detect]
+    if: needs.detect.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        experience: ${{ fromJson(needs.detect.outputs.experiences) }}
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Install Rokit
         uses: CompeyDev/setup-rokit@v0.1.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Detect changed experiences
-        id: detect
+      - name: Install Wally packages
+        working-directory: experiences/${{ matrix.experience }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            CHANGED=$(git diff --name-only HEAD~1 HEAD -- experiences/ | cut -d/ -f2 | sort -u | tr '\n' ' ')
-          else
-            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD -- experiences/ | cut -d/ -f2 | sort -u | tr '\n' ' ')
+          if [ -f wally.toml ]; then
+            wally install
           fi
 
-          if [ -z "$CHANGED" ]; then
-            echo "No experiences changed"
-            echo "changed=" >> "$GITHUB_OUTPUT"
-          else
-            echo "Changed experiences: $CHANGED"
-            echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build changed experiences
-        if: steps.detect.outputs.changed != ''
+      - name: Build
         run: |
           mkdir -p build
-          for name in ${{ steps.detect.outputs.changed }}; do
-            dir="experiences/$name"
-            if [ ! -f "$dir/default.project.json" ]; then
-              echo "Skipping $name (no default.project.json)"
-              continue
-            fi
-            echo "::group::Building $name"
-            if [ -f "$dir/wally.toml" ]; then
-              (cd "$dir" && wally install)
-            fi
-            (cd "$dir" && rojo build -o "../../build/$name.rbxl")
-            echo "Built build/$name.rbxl"
-            echo "::endgroup::"
-          done
+          cd experiences/${{ matrix.experience }}
+          rojo build -o ../../build/${{ matrix.experience }}.rbxl
 
-      - name: Upload build artifacts
-        if: steps.detect.outputs.changed != ''
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rbxl-builds
-          path: build/*.rbxl
+          name: ${{ matrix.experience }}
+          path: build/${{ matrix.experience }}.rbxl
           retention-days: 7
 
   deploy:
-    name: Deploy
+    name: Deploy (${{ matrix.experience }})
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.build.outputs.changed != ''
+    needs: [detect, build]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        experience: ${{ fromJson(needs.detect.outputs.experiences) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -100,69 +125,41 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download build artifacts
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: rbxl-builds
+          name: ${{ matrix.experience }}
           path: build/
 
-      - name: Deploy changed experiences
+      - name: Resolve deploy config
+        id: config
+        run: |
+          NAME="${{ matrix.experience }}"
+          VAR_PREFIX=$(echo "$NAME" | tr '[:lower:]-' '[:upper:]_')
+          echo "universe_var=${VAR_PREFIX}_UNIVERSE_ID" >> "$GITHUB_OUTPUT"
+          echo "place_var=${VAR_PREFIX}_PLACE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Roblox
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ vars[steps.config.outputs.universe_var] }}
+          PLACE_ID: ${{ vars[steps.config.outputs.place_var] }}
         run: |
-          CONFIG=".github/deploy-config.json"
-
-          for name in ${{ needs.build.outputs.changed }}; do
-            UNIVERSE_ID=$(jq -r ".experiences.\"$name\".universe_id // empty" "$CONFIG")
-            PLACE_ID=$(jq -r ".experiences.\"$name\".place_id // empty" "$CONFIG")
-
-            if [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
-              echo "::warning::Skipping $name — no universe_id/place_id in deploy-config.json"
-              continue
-            fi
-
-            BUILD_FILE="build/$name.rbxl"
-            if [ ! -f "$BUILD_FILE" ]; then
-              echo "::warning::Skipping $name — $BUILD_FILE not found"
-              continue
-            fi
-
-            echo "::group::Deploying $name (universe=$UNIVERSE_ID, place=$PLACE_ID)"
-            for attempt in 1 2 3 4 5; do
-              if rbxcloud experience publish \
-                --universe-id "$UNIVERSE_ID" \
-                --place-id "$PLACE_ID" \
-                --filename "$BUILD_FILE" \
-                --version-type published \
-                --api-key "$ROBLOX_API_KEY"; then
-                echo "Deployed $name"
-                break
-              fi
-              if [ "$attempt" -eq 5 ]; then
-                echo "::error::Failed to deploy $name after 5 attempts"
-                exit 1
-              fi
-              echo "Attempt $attempt failed, retrying in 15s..."
-              sleep 15
-            done
-            echo "::endgroup::"
-          done
+          if [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+            echo "::warning::No UNIVERSE_ID/PLACE_ID configured for ${{ matrix.experience }}, skipping publish"
+            exit 0
+          fi
+          ./scripts/publish.sh "${{ matrix.experience }}" "$UNIVERSE_ID" "$PLACE_ID"
 
       - name: Notify live servers
         if: success()
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ vars[steps.config.outputs.universe_var] }}
         run: |
-          CONFIG=".github/deploy-config.json"
-
-          for name in ${{ needs.build.outputs.changed }}; do
-            UNIVERSE_ID=$(jq -r ".experiences.\"$name\".universe_id // empty" "$CONFIG")
-            if [ -z "$UNIVERSE_ID" ]; then continue; fi
-
-            echo "Notifying $name servers of deployment"
-            rbxcloud messaging publish \
-              --topic "Deployment" \
-              --message "{\"experience\":\"$name\",\"sha\":\"${{ github.sha }}\",\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
-              --universe-id "$UNIVERSE_ID" \
-              --api-key "$ROBLOX_API_KEY" || echo "::warning::Messaging failed for $name (may not have messaging scope)"
-          done
+          if [ -z "$UNIVERSE_ID" ]; then exit 0; fi
+          rbxcloud messaging publish \
+            --topic "Deployment" \
+            --message "{\"experience\":\"${{ matrix.experience }}\",\"sha\":\"${{ github.sha }}\",\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+            --universe-id "$UNIVERSE_ID" \
+            --api-key "$ROBLOX_API_KEY" || echo "::warning::Messaging failed for ${{ matrix.experience }}"
