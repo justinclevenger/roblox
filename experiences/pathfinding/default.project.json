@@ -43,8 +43,9 @@
 				"GlobalShadows": true,
 				"Brightness": 1,
 				"ClockTime": 6,
-				"FogEnd": 500,
-				"FogColor": [0.3, 0.3, 0.35]
+				"FogStart": 20,
+				"FogEnd": 150,
+				"FogColor": [0.25, 0.25, 0.3]
 			}
 		},
 		"SoundService": {
