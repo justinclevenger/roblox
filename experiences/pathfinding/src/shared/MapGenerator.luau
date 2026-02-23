@@ -1729,12 +1729,7 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 	)
 
 	-- West strip (left of building, between north and south)
-	makeRainStrip(
-		parent,
-		"RainWest",
-		Vector3.new(margin, 1, buildingDepth),
-		Vector3.new(-margin / 2, rainY, centerZ)
-	)
+	makeRainStrip(parent, "RainWest", Vector3.new(margin, 1, buildingDepth), Vector3.new(-margin / 2, rainY, centerZ))
 
 	-- East strip (right of building, between north and south)
 	makeRainStrip(
