@@ -230,7 +230,7 @@ local function growHallways(floor: any, grid: { { any? } }, startX: number, star
 		local curZ = seedZ
 		local curDir = dirName
 
-		for step = 1, branchLen do
+		for _ = 1, branchLen do
 			-- Stay 1 cell from grid edges to leave room for rooms on sides
 			if curX <= 1 or curX >= gridWidth or curZ <= 1 or curZ >= gridDepth then
 				break
@@ -496,7 +496,7 @@ end
 --- @param startZ number -- stairwell Z
 --- @param gridWidth number
 --- @param gridDepth number
-local function ensureSolvability(floor: any, grid: { { any? } }, startX: number, startZ: number, gridWidth: number, gridDepth: number)
+local function ensureSolvability(floor: any, grid: { { any? } }, startX: number, startZ: number, _gridWidth: number, _gridDepth: number)
 	-- Build room adjacency graph from doors
 	local adjacency: { [number]: { [number]: boolean } } = {}
 	for _, room in floor.rooms do
@@ -557,9 +557,13 @@ local function ensureSolvability(floor: any, grid: { { any? } }, startX: number,
 							table.insert(neighborRoom.doors, { dir = oppDir, fromCell = { x = neighbor.x, z = neighbor.z }, toRoomId = room.id })
 
 							-- Update adjacency
-							if not adjacency[room.id] then adjacency[room.id] = {} end
+							if not adjacency[room.id] then
+								adjacency[room.id] = {}
+							end
 							adjacency[room.id][neighborCell.roomId] = true
-							if not adjacency[neighborCell.roomId] then adjacency[neighborCell.roomId] = {} end
+							if not adjacency[neighborCell.roomId] then
+								adjacency[neighborCell.roomId] = {}
+							end
 							adjacency[neighborCell.roomId][room.id] = true
 
 							-- Mark this room and flood fill from it
@@ -885,8 +889,8 @@ local function getRoomColor(roomType: string, condition: string): (Color3, Color
 		wallColor = Color3.fromRGB(155, 150, 140)
 		floorColor = Color3.fromRGB(130, 125, 115)
 	else
-		wallColor = Color3.fromRGB(180, 175, 165)
-		floorColor = Color3.fromRGB(140, 135, 125)
+		wallColor = Color3.fromRGB(175, 170, 160)
+		floorColor = Color3.fromRGB(135, 130, 120)
 	end
 
 	-- Condition overrides
@@ -1092,7 +1096,7 @@ end
 --- @param gridDepth number
 --- @param floorCount number
 --- @param rng Random
-local function buildExterior(parent: Instance, gridWidth: number, gridDepth: number, floorCount: number, rng: Random)
+local function buildExterior(parent: Instance, gridWidth: number, gridDepth: number, floorCount: number, _rng: Random)
 	local extColor = Color3.fromRGB(140, 130, 120)
 	local buildingWidth = gridWidth * SLOT_SIZE
 	local buildingDepth = gridDepth * SLOT_SIZE
@@ -1209,7 +1213,7 @@ local function buildForest(parent: Instance, gridWidth: number, gridDepth: numbe
 	local groundSize = 2 * forestRadius + math.max(buildingWidth, buildingDepth)
 
 	-- Green grass ground plane
-	local ground = makePart(
+	makePart(
 		parent,
 		"ForestGround",
 		Vector3.new(groundSize, 1, groundSize),
@@ -1224,7 +1228,7 @@ local function buildForest(parent: Instance, gridWidth: number, gridDepth: numbe
 	local buildingMargin = 10
 	local maxAttempts = 1500
 
-	for attempt = 1, maxAttempts do
+	for _ = 1, maxAttempts do
 		local tx = centerX + rng:NextNumber() * (groundSize - 20) - (groundSize - 20) / 2
 		local tz = centerZ + rng:NextNumber() * (groundSize - 20) - (groundSize - 20) / 2
 
