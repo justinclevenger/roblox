@@ -1120,8 +1120,22 @@ local function buildFloorParts(
 				floorPart:SetAttribute("RoomType", cellData.roomType)
 			end
 
-			-- No separate ceiling — the floor slab of the level above serves
-			-- as the ceiling, and the exterior roof covers the top floor.
+			-- Thin ceiling slab matching the room's floor color, positioned just
+			-- below the floor slab of the level above (or the roof on top floor).
+			-- Skip stairwells so the shaft stays open.
+			if cellData.roomType ~= "Stairwell" then
+				local ceilingThickness = 0.2
+				local ceilingTopY = worldPos.Y + FLOOR_HEIGHT - 1 -- flush with bottom of floor above
+				local ceilingCenterY = ceilingTopY - ceilingThickness / 2
+				makePart(
+					parent,
+					"Ceiling",
+					Vector3.new(SLOT_SIZE, ceilingThickness, SLOT_SIZE),
+					Vector3.new(worldPos.X, ceilingCenterY, worldPos.Z),
+					template.floorMaterial,
+					floorColor
+				)
+			end
 
 			-- Build walls for each direction
 			for dir, delta in DIRECTIONS do

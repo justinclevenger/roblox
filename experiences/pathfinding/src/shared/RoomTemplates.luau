@@ -40,7 +40,7 @@ RoomTemplates.templates = {
 	Stairwell = {
 		type = "Stairwell",
 		gridSize = { x = 1, z = 1 },
-		doorPositions = { "north", "south", "east", "west" },
+		doorPositions = { "north", "south" }, -- stairs run along Z axis
 		floorMaterial = Enum.Material.Concrete,
 		wallMaterial = Enum.Material.Concrete,
 		weight = 0, -- placed explicitly
