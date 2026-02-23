@@ -1119,14 +1119,15 @@ local function buildFloorParts(
 			)
 			floorPart:SetAttribute("RoomType", cellData.roomType)
 
-			-- Build ceiling (inset to fit within walls, skip on stairwell unless top floor)
-			if cellData.roomType ~= "Stairwell" or isTopFloor then
+			-- Build ceiling (full SLOT_SIZE — no inset so big rooms tile seamlessly)
+			-- Skip stairwell rooms entirely so the shaft stays open
+			if cellData.roomType ~= "Stairwell" then
 				local ceilingY = worldPos.Y + FLOOR_HEIGHT + 0.5
 				makePart(
 					parent,
 					"Ceiling",
-					Vector3.new(slabSizeX, 1, slabSizeZ),
-					Vector3.new(slabCenterX, ceilingY, slabCenterZ),
+					Vector3.new(SLOT_SIZE, 1, SLOT_SIZE),
+					Vector3.new(worldPos.X, ceilingY, worldPos.Z),
 					Enum.Material.Concrete,
 					wallColor
 				)
