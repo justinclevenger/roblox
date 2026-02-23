@@ -769,55 +769,6 @@ local function makePart(
 	return part
 end
 
---- Build a floor slab for a grid cell
---- @param parent Instance
---- @param gridX number
---- @param gridZ number
---- @param floorIndex number
---- @param material Enum.Material
---- @param color Color3
---- @param roomType string
-local function buildFloor(
-	parent: Instance,
-	gridX: number,
-	gridZ: number,
-	floorIndex: number,
-	material: Enum.Material,
-	color: Color3,
-	roomType: string
-)
-	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
-	local floorY = worldPos.Y - 0.5
-	local part = makePart(
-		parent,
-		"Floor",
-		Vector3.new(SLOT_SIZE, 1, SLOT_SIZE),
-		Vector3.new(worldPos.X, floorY, worldPos.Z),
-		material,
-		color
-	)
-	part:SetAttribute("RoomType", roomType)
-end
-
---- Build a ceiling slab for a grid cell
---- @param parent Instance
---- @param gridX number
---- @param gridZ number
---- @param floorIndex number
---- @param color Color3
-local function buildCeiling(parent: Instance, gridX: number, gridZ: number, floorIndex: number, color: Color3)
-	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
-	local ceilingY = worldPos.Y + FLOOR_HEIGHT + 0.5
-	makePart(
-		parent,
-		"Ceiling",
-		Vector3.new(SLOT_SIZE, 1, SLOT_SIZE),
-		Vector3.new(worldPos.X, ceilingY, worldPos.Z),
-		Enum.Material.Concrete,
-		color
-	)
-end
-
 --- Build a full wall on one edge of a grid cell
 --- @param parent Instance
 --- @param gridX number
@@ -1227,10 +1178,8 @@ local function buildFloorParts(
 			-- Build furniture for first cell of each room
 			if not furnitureBuilt[cellData.roomId] and room.furniture and #room.furniture > 0 then
 				furnitureBuilt[cellData.roomId] = true
-				local worldPos = gridToWorld(x, z, floorIndex)
-				local floorY = worldPos.Y
 				for _, furnitureItem in room.furniture do
-					buildFurniturePart(parent, furnitureItem, worldPos, floorY)
+					buildFurniturePart(parent, furnitureItem, worldPos, worldPos.Y)
 				end
 			end
 		end
