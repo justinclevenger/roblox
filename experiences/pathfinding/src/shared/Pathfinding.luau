@@ -435,7 +435,7 @@ function Pathfinding.findPathMultiFloor(startPos: Vector3, targetPos: Vector3, f
 		end
 
 		-- Insert stair-traversal waypoints (linearly interpolated between floors)
-		local nextFloor = currentFloor + direction
+		local _nextFloor = currentFloor + direction
 		local currentY = bestStair.Y
 		local nextY = currentY + (direction * floorHeight)
 		for step = 1, STAIR_INTERPOLATION_STEPS do

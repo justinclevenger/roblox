@@ -16,7 +16,7 @@ local mapData = MapGenerator.generate({
 	seed = 42,
 })
 
-local floorConnections = MapGenerator.getFloorConnections()
+local _floorConnections = MapGenerator.getFloorConnections()
 
 print(("[Server] Asylum generated: %d floors, stairwell at (%d, %d)"):format(
 	mapData.floorCount,
