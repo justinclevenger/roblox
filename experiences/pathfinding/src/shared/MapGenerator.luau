@@ -1120,12 +1120,65 @@ local function buildFloorParts(
 			local condition = room.condition or "normal"
 			local wallColor, floorColor = getRoomColor(cellData.roomType, condition)
 
-			-- Build floor slab
-			buildFloor(parent, x, z, floorIndex, template.floorMaterial, floorColor, cellData.roomType)
+			-- Compute inset floor/ceiling bounds: trim edges where there's an
+			-- interior wall (different-room neighbor in bounds) so the slab fits
+			-- snugly inside the double-sided walls.  Grid-boundary edges and
+			-- same-room edges stay at full SLOT_SIZE.
+			local worldPos = gridToWorld(x, z, floorIndex)
+			local halfSlot = SLOT_SIZE / 2
+			local wallOffset = WALL_THICKNESS / 2
+			local xMin = worldPos.X - halfSlot
+			local xMax = worldPos.X + halfSlot
+			local zMin = worldPos.Z - halfSlot
+			local zMax = worldPos.Z + halfSlot
 
-			-- Build ceiling (skip on stairwell unless top floor)
+			for dir, delta in DIRECTIONS do
+				local nx = x + delta.x
+				local nz = z + delta.z
+				-- Only inset if neighbor is in-bounds AND belongs to a different room
+				local hasInteriorWall = inBounds(grid, nx, nz)
+					and (grid[nx][nz] == false or grid[nx][nz].roomId ~= cellData.roomId)
+				if hasInteriorWall then
+					if dir == "west" then
+						xMin = xMin + wallOffset
+					elseif dir == "east" then
+						xMax = xMax - wallOffset
+					elseif dir == "north" then
+						zMin = zMin + wallOffset
+					elseif dir == "south" then
+						zMax = zMax - wallOffset
+					end
+				end
+			end
+
+			local slabSizeX = xMax - xMin
+			local slabSizeZ = zMax - zMin
+			local slabCenterX = (xMin + xMax) / 2
+			local slabCenterZ = (zMin + zMax) / 2
+			local floorY = worldPos.Y - 0.5
+
+			-- Build floor slab (inset to fit within walls)
+			local floorPart = makePart(
+				parent,
+				"Floor",
+				Vector3.new(slabSizeX, 1, slabSizeZ),
+				Vector3.new(slabCenterX, floorY, slabCenterZ),
+				template.floorMaterial,
+				floorColor
+			)
+			floorPart:SetAttribute("RoomType", cellData.roomType)
+
+			-- Build ceiling (inset to fit within walls, skip on stairwell unless top floor)
 			if cellData.roomType ~= "Stairwell" or isTopFloor then
-				buildCeiling(parent, x, z, floorIndex, wallColor)
+				local ceilingY = worldPos.Y + FLOOR_HEIGHT + 0.5
+				makePart(
+					parent,
+					"Ceiling",
+					Vector3.new(slabSizeX, 1, slabSizeZ),
+					Vector3.new(slabCenterX, ceilingY, slabCenterZ),
+					Enum.Material.Concrete,
+					wallColor
+				)
 			end
 
 			-- Build walls for each direction
