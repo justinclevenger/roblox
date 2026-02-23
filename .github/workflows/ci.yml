@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run selene
+        run: selene experiences/ packages/
+
+      - name: Check formatting
+        run: stylua --check experiences/ packages/
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect changed experiences
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- experiences/ | cut -d/ -f2 | sort -u | tr '\n' ' ')
+          else
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD -- experiences/ | cut -d/ -f2 | sort -u | tr '\n' ' ')
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            echo "No experiences changed"
+            echo "changed=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Changed experiences: $CHANGED"
+            echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build changed experiences
+        if: steps.detect.outputs.changed != ''
+        run: |
+          mkdir -p build
+          for name in ${{ steps.detect.outputs.changed }}; do
+            dir="experiences/$name"
+            if [ ! -f "$dir/default.project.json" ]; then
+              echo "Skipping $name (no default.project.json)"
+              continue
+            fi
+            echo "::group::Building $name"
+            if [ -f "$dir/wally.toml" ]; then
+              (cd "$dir" && wally install)
+            fi
+            (cd "$dir" && rojo build -o "../../build/$name.rbxl")
+            echo "Built build/$name.rbxl"
+            echo "::endgroup::"
+          done
+
+      - name: Upload build artifacts
+        if: steps.detect.outputs.changed != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbxl-builds
+          path: build/*.rbxl
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.build.outputs.changed != ''
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rbxl-builds
+          path: build/
+
+      - name: Deploy changed experiences
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          CONFIG=".github/deploy-config.json"
+
+          for name in ${{ needs.build.outputs.changed }}; do
+            UNIVERSE_ID=$(jq -r ".experiences.\"$name\".universe_id // empty" "$CONFIG")
+            PLACE_ID=$(jq -r ".experiences.\"$name\".place_id // empty" "$CONFIG")
+
+            if [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+              echo "::warning::Skipping $name — no universe_id/place_id in deploy-config.json"
+              continue
+            fi
+
+            BUILD_FILE="build/$name.rbxl"
+            if [ ! -f "$BUILD_FILE" ]; then
+              echo "::warning::Skipping $name — $BUILD_FILE not found"
+              continue
+            fi
+
+            echo "::group::Deploying $name (universe=$UNIVERSE_ID, place=$PLACE_ID)"
+            rbxcloud place publish \
+              --universe-id "$UNIVERSE_ID" \
+              --place-id "$PLACE_ID" \
+              --filepath "$BUILD_FILE" \
+              --publish-type published \
+              --api-key "$ROBLOX_API_KEY"
+            echo "Deployed $name"
+            echo "::endgroup::"
+          done
+
+      - name: Notify live servers
+        if: success()
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          CONFIG=".github/deploy-config.json"
+
+          for name in ${{ needs.build.outputs.changed }}; do
+            UNIVERSE_ID=$(jq -r ".experiences.\"$name\".universe_id // empty" "$CONFIG")
+            if [ -z "$UNIVERSE_ID" ]; then continue; fi
+
+            echo "Notifying $name servers of deployment"
+            rbxcloud messaging publish \
+              --topic "Deployment" \
+              --message "{\"experience\":\"$name\",\"sha\":\"${{ github.sha }}\",\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+              --universe-id "$UNIVERSE_ID" \
+              --api-key "$ROBLOX_API_KEY" || echo "::warning::Messaging failed for $name (may not have messaging scope)"
+          done
