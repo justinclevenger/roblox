@@ -876,6 +876,38 @@ local function buildDoorFrame(
 			material,
 			color
 		)
+
+		-- Door frame trim (wooden jambs + header)
+		local trimThick = 0.3
+		local trimDepth = WALL_THICKNESS + 0.4
+		local trimColor = Color3.fromRGB(80, 60, 40)
+		-- Left jamb
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_LJamb",
+			Vector3.new(trimThick, doorHeight, trimDepth),
+			Vector3.new(worldPos.X - doorWidth / 2, floorY + doorHeight / 2, wallZ),
+			Enum.Material.WoodPlanks,
+			trimColor
+		)
+		-- Right jamb
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_RJamb",
+			Vector3.new(trimThick, doorHeight, trimDepth),
+			Vector3.new(worldPos.X + doorWidth / 2, floorY + doorHeight / 2, wallZ),
+			Enum.Material.WoodPlanks,
+			trimColor
+		)
+		-- Header
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_Header",
+			Vector3.new(doorWidth + trimThick * 2, trimThick, trimDepth),
+			Vector3.new(worldPos.X, floorY + doorHeight + trimThick / 2, wallZ),
+			Enum.Material.WoodPlanks,
+			trimColor
+		)
 	elseif dir == "east" or dir == "west" then
 		local wallX
 		if dir == "east" then
@@ -914,6 +946,38 @@ local function buildDoorFrame(
 			Vector3.new(wallX, floorY + doorHeight + lintelHeight / 2, worldPos.Z),
 			material,
 			color
+		)
+
+		-- Door frame trim (wooden jambs + header)
+		local trimThick = 0.3
+		local trimDepth = WALL_THICKNESS + 0.4
+		local trimColor = Color3.fromRGB(80, 60, 40)
+		-- Left jamb (north side)
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_LJamb",
+			Vector3.new(trimDepth, doorHeight, trimThick),
+			Vector3.new(wallX, floorY + doorHeight / 2, worldPos.Z - doorWidth / 2),
+			Enum.Material.WoodPlanks,
+			trimColor
+		)
+		-- Right jamb (south side)
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_RJamb",
+			Vector3.new(trimDepth, doorHeight, trimThick),
+			Vector3.new(wallX, floorY + doorHeight / 2, worldPos.Z + doorWidth / 2),
+			Enum.Material.WoodPlanks,
+			trimColor
+		)
+		-- Header
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_Header",
+			Vector3.new(trimDepth, trimThick, doorWidth + trimThick * 2),
+			Vector3.new(wallX, floorY + doorHeight + trimThick / 2, worldPos.Z),
+			Enum.Material.WoodPlanks,
+			trimColor
 		)
 	end
 end
@@ -1124,8 +1188,8 @@ local function buildFloorParts(
 			-- below the floor slab of the level above (or the roof on top floor).
 			-- Skip stairwells so the shaft stays open.
 			if cellData.roomType ~= "Stairwell" then
-				local ceilingThickness = 0.2
-				local ceilingTopY = worldPos.Y + FLOOR_HEIGHT - 1 -- flush with bottom of floor above
+				local ceilingThickness = 0.1
+				local ceilingTopY = worldPos.Y + FLOOR_HEIGHT - 1.1 -- small gap below floor above
 				local ceilingCenterY = ceilingTopY - ceilingThickness / 2
 				makePart(
 					parent,
