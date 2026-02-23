@@ -1185,7 +1185,8 @@ local function buildFloorParts(
 						break
 					end
 				end
-				if hasInteriorWall and not hasDoorOnEdge then
+				-- On upper floors, inset even at door edges (wooden plank fills gap)
+				if hasInteriorWall and (not hasDoorOnEdge or floorIndex > 1) then
 					if dir == "west" then
 						xMin = xMin + wallOffset
 					elseif dir == "east" then
@@ -1217,6 +1218,52 @@ local function buildFloorParts(
 					floorColor
 				)
 				floorPart:SetAttribute("RoomType", cellData.roomType)
+			end
+
+			-- On upper floors, fill the doorway floor gap with a wooden plank
+			if floorIndex > 1 then
+				local doorWidth = 6
+				local woodColor = Color3.fromRGB(90, 65, 45)
+				for _, door in cellData.doors do
+					local d = door.dir
+					if d == "north" then
+						makePart(
+							parent,
+							"DoorPlank_north",
+							Vector3.new(doorWidth, floorThickness, wallOffset),
+							Vector3.new(worldPos.X, floorY, worldPos.Z - halfSlot + wallOffset / 2),
+							Enum.Material.WoodPlanks,
+							woodColor
+						)
+					elseif d == "south" then
+						makePart(
+							parent,
+							"DoorPlank_south",
+							Vector3.new(doorWidth, floorThickness, wallOffset),
+							Vector3.new(worldPos.X, floorY, worldPos.Z + halfSlot - wallOffset / 2),
+							Enum.Material.WoodPlanks,
+							woodColor
+						)
+					elseif d == "east" then
+						makePart(
+							parent,
+							"DoorPlank_east",
+							Vector3.new(wallOffset, floorThickness, doorWidth),
+							Vector3.new(worldPos.X + halfSlot - wallOffset / 2, floorY, worldPos.Z),
+							Enum.Material.WoodPlanks,
+							woodColor
+						)
+					elseif d == "west" then
+						makePart(
+							parent,
+							"DoorPlank_west",
+							Vector3.new(wallOffset, floorThickness, doorWidth),
+							Vector3.new(worldPos.X - halfSlot + wallOffset / 2, floorY, worldPos.Z),
+							Enum.Material.WoodPlanks,
+							woodColor
+						)
+					end
+				end
 			end
 
 			-- Thin ceiling slab matching the room's floor color, positioned
