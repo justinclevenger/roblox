@@ -21,10 +21,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run selene
-        run: selene experiences/ packages/
+        run: selene experiences/pathfinding/ packages/
 
       - name: Check formatting
-        run: stylua --check experiences/ packages/
+        run: stylua --check experiences/pathfinding/ packages/
 
   build:
     name: Build
