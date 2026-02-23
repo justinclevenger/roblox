@@ -1042,15 +1042,13 @@ end
 --- @param floorIndex number
 --- @param gridWidth number
 --- @param gridDepth number
---- @param isTopFloor boolean
 local function buildFloorParts(
 	parent: Instance,
 	floor: any,
 	grid: { { any? } },
 	floorIndex: number,
 	gridWidth: number,
-	gridDepth: number,
-	isTopFloor: boolean
+	gridDepth: number
 )
 	-- Track which rooms have had furniture built (use first cell)
 	local furnitureBuilt: { [number]: boolean } = {}
@@ -1710,11 +1708,10 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 		floorFolder.Name = "Floor_" .. tostring(floorIndex)
 		floorFolder.Parent = generatedParts
 
-		local isTopFloor = (floorIndex == floorCount)
-		buildFloorParts(floorFolder, floor, floor.grid, floorIndex, gridWidth, gridDepth, isTopFloor)
+		buildFloorParts(floorFolder, floor, floor.grid, floorIndex, gridWidth, gridDepth)
 
 		-- Build staircase on every floor except the top floor
-		if not isTopFloor then
+		if floorIndex ~= floorCount then
 			buildStaircase(floorFolder, stairX, stairZ, floorIndex)
 		end
 
