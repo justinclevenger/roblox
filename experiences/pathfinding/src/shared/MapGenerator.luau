@@ -1175,9 +1175,17 @@ local function buildFloorParts(
 				local nx = x + delta.x
 				local nz = z + delta.z
 				-- Only inset if neighbor is in-bounds AND belongs to a different room
+				-- AND there is NO door on this edge (floors extend through doorways)
 				local hasInteriorWall = inBounds(grid, nx, nz)
 					and (grid[nx][nz] == false or grid[nx][nz].roomId ~= cellData.roomId)
-				if hasInteriorWall then
+				local hasDoorOnEdge = false
+				for _, door in cellData.doors do
+					if door.dir == dir then
+						hasDoorOnEdge = true
+						break
+					end
+				end
+				if hasInteriorWall and not hasDoorOnEdge then
 					if dir == "west" then
 						xMin = xMin + wallOffset
 					elseif dir == "east" then
@@ -1690,7 +1698,7 @@ local function makeRainStrip(parent: Instance, name: string, size: Vector3, posi
 	emitter.Lifetime = NumberRange.new(2, 4)
 	emitter.Speed = NumberRange.new(50, 65)
 	emitter.EmissionDirection = Enum.NormalId.Bottom
-	emitter.SpreadAngle = Vector2.new(5, 5)
+	emitter.SpreadAngle = Vector2.new(1, 1)
 	emitter.Color = ColorSequence.new(Color3.fromRGB(180, 190, 200))
 	emitter.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.15),
@@ -1714,29 +1722,33 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 	local centerX = buildingWidth / 2
 	local centerZ = buildingDepth / 2
 	local margin = 200 -- how far rain extends beyond building
-	local totalWidth = buildingWidth + margin * 2
+	local gap = 10 -- keep rain strips away from building edges
 	local rainY = 80
 
-	-- North strip (behind building)
-	makeRainStrip(parent, "RainNorth", Vector3.new(totalWidth, 1, margin), Vector3.new(centerX, rainY, -margin / 2))
+	-- North strip (behind building, gap away from wall)
+	local nDepth = margin - gap
+	makeRainStrip(parent, "RainNorth", Vector3.new(buildingWidth + margin * 2, 1, nDepth), Vector3.new(centerX, rainY, -gap - nDepth / 2))
 
-	-- South strip (in front of building)
+	-- South strip (in front of building, gap away from wall)
+	local sDepth = margin - gap
 	makeRainStrip(
 		parent,
 		"RainSouth",
-		Vector3.new(totalWidth, 1, margin),
-		Vector3.new(centerX, rainY, buildingDepth + margin / 2)
+		Vector3.new(buildingWidth + margin * 2, 1, sDepth),
+		Vector3.new(centerX, rainY, buildingDepth + gap + sDepth / 2)
 	)
 
-	-- West strip (left of building, between north and south)
-	makeRainStrip(parent, "RainWest", Vector3.new(margin, 1, buildingDepth), Vector3.new(-margin / 2, rainY, centerZ))
+	-- West strip (left of building, gap away from wall)
+	local wWidth = margin - gap
+	makeRainStrip(parent, "RainWest", Vector3.new(wWidth, 1, buildingDepth), Vector3.new(-gap - wWidth / 2, rainY, centerZ))
 
-	-- East strip (right of building, between north and south)
+	-- East strip (right of building, gap away from wall)
+	local eWidth = margin - gap
 	makeRainStrip(
 		parent,
 		"RainEast",
-		Vector3.new(margin, 1, buildingDepth),
-		Vector3.new(buildingWidth + margin / 2, rainY, centerZ)
+		Vector3.new(eWidth, 1, buildingDepth),
+		Vector3.new(buildingWidth + gap + eWidth / 2, rainY, centerZ)
 	)
 end
 
