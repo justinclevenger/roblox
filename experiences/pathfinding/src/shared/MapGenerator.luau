@@ -417,7 +417,8 @@ end
 --- @param grid { { any? } }
 --- @param gridWidth number
 --- @param gridDepth number
-local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gridDepth: number)
+--- @param rng Random
+local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gridDepth: number, rng: Random)
 	-- Check east and south neighbors to avoid duplicate checks
 	for x = 1, gridWidth do
 		for z = 1, gridDepth do
@@ -430,26 +431,35 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 			if x + 1 <= gridWidth and grid[x + 1][z] ~= false then
 				local cellB = grid[x + 1][z]
 				if cellA.roomId ~= cellB.roomId then
-					-- Check if both templates allow doors on these edges
-					local templateA = RoomTemplates.templates[cellA.roomType]
-					local templateB = RoomTemplates.templates[cellB.roomType]
-					local aAllows = table.find(templateA.doorPositions, "east") ~= nil
-					local bAllows = table.find(templateB.doorPositions, "west") ~= nil
-					if aAllows and bAllows then
-						-- Record door on both cells
-						table.insert(cellA.doors, { dir = "east", neighborRoomId = cellB.roomId })
-						table.insert(cellB.doors, { dir = "west", neighborRoomId = cellA.roomId })
-						-- Record on room objects
-						local roomA = floor.rooms[cellA.roomId]
-						local roomB = floor.rooms[cellB.roomId]
-						table.insert(
-							roomA.doors,
-							{ dir = "east", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
-						)
-						table.insert(
-							roomB.doors,
-							{ dir = "west", fromCell = { x = x + 1, z = z }, toRoomId = cellA.roomId }
-						)
+					-- Navigation-critical connections always get doors
+					local isNav = cellA.roomType == "Hallway"
+						or cellA.roomType == "Stairwell"
+						or cellA.roomType == "Lobby"
+						or cellB.roomType == "Hallway"
+						or cellB.roomType == "Stairwell"
+						or cellB.roomType == "Lobby"
+					if isNav or rng:NextNumber() <= 0.35 then
+						-- Check if both templates allow doors on these edges
+						local templateA = RoomTemplates.templates[cellA.roomType]
+						local templateB = RoomTemplates.templates[cellB.roomType]
+						local aAllows = table.find(templateA.doorPositions, "east") ~= nil
+						local bAllows = table.find(templateB.doorPositions, "west") ~= nil
+						if aAllows and bAllows then
+							-- Record door on both cells
+							table.insert(cellA.doors, { dir = "east", neighborRoomId = cellB.roomId })
+							table.insert(cellB.doors, { dir = "west", neighborRoomId = cellA.roomId })
+							-- Record on room objects
+							local roomA = floor.rooms[cellA.roomId]
+							local roomB = floor.rooms[cellB.roomId]
+							table.insert(
+								roomA.doors,
+								{ dir = "east", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
+							)
+							table.insert(
+								roomB.doors,
+								{ dir = "west", fromCell = { x = x + 1, z = z }, toRoomId = cellA.roomId }
+							)
+						end
 					end
 				end
 			end
@@ -458,23 +468,32 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 			if z + 1 <= gridDepth and grid[x][z + 1] ~= false then
 				local cellB = grid[x][z + 1]
 				if cellA.roomId ~= cellB.roomId then
-					local templateA = RoomTemplates.templates[cellA.roomType]
-					local templateB = RoomTemplates.templates[cellB.roomType]
-					local aAllows = table.find(templateA.doorPositions, "south") ~= nil
-					local bAllows = table.find(templateB.doorPositions, "north") ~= nil
-					if aAllows and bAllows then
-						table.insert(cellA.doors, { dir = "south", neighborRoomId = cellB.roomId })
-						table.insert(cellB.doors, { dir = "north", neighborRoomId = cellA.roomId })
-						local roomA = floor.rooms[cellA.roomId]
-						local roomB = floor.rooms[cellB.roomId]
-						table.insert(
-							roomA.doors,
-							{ dir = "south", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
-						)
-						table.insert(
-							roomB.doors,
-							{ dir = "north", fromCell = { x = x, z = z + 1 }, toRoomId = cellA.roomId }
-						)
+					-- Navigation-critical connections always get doors
+					local isNav = cellA.roomType == "Hallway"
+						or cellA.roomType == "Stairwell"
+						or cellA.roomType == "Lobby"
+						or cellB.roomType == "Hallway"
+						or cellB.roomType == "Stairwell"
+						or cellB.roomType == "Lobby"
+					if isNav or rng:NextNumber() <= 0.35 then
+						local templateA = RoomTemplates.templates[cellA.roomType]
+						local templateB = RoomTemplates.templates[cellB.roomType]
+						local aAllows = table.find(templateA.doorPositions, "south") ~= nil
+						local bAllows = table.find(templateB.doorPositions, "north") ~= nil
+						if aAllows and bAllows then
+							table.insert(cellA.doors, { dir = "south", neighborRoomId = cellB.roomId })
+							table.insert(cellB.doors, { dir = "north", neighborRoomId = cellA.roomId })
+							local roomA = floor.rooms[cellA.roomId]
+							local roomB = floor.rooms[cellB.roomId]
+							table.insert(
+								roomA.doors,
+								{ dir = "south", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
+							)
+							table.insert(
+								roomB.doors,
+								{ dir = "north", fromCell = { x = x, z = z + 1 }, toRoomId = cellA.roomId }
+							)
+						end
 					end
 				end
 			end
@@ -1132,9 +1151,14 @@ local function buildFloorParts(
 					continue
 				end
 
+				-- Skip walls at grid boundary (exterior shell handles perimeter)
+				local neighborInBounds = inBounds(grid, nx, nz)
+				if not neighborInBounds then
+					continue
+				end
+
 				-- Avoid duplicate walls: only build shared interior edges from one side
-				-- East/south cell owns the wall; west/north neighbor skips it
-				local neighborExists = inBounds(grid, nx, nz) and grid[nx][nz] ~= false
+				local neighborExists = grid[nx][nz] ~= false
 				if neighborExists and (dir == "west" or dir == "north") then
 					continue
 				end
@@ -1191,6 +1215,143 @@ end
 -- Exterior
 ------------------------------------------------------------------------
 
+--- Build an exterior wall segment with optional window for one grid cell width
+local function buildExteriorSegment(
+	parent: Instance,
+	centerAlongWall: number,
+	wallPerpPos: number,
+	floorIndex: number,
+	hasWindow: boolean,
+	isNorthSouth: boolean,
+	color: Color3
+)
+	local floorY = (floorIndex - 1) * FLOOR_HEIGHT
+	local wallCenterY = floorY + FLOOR_HEIGHT / 2
+
+	if not hasWindow then
+		-- Solid segment
+		local size, pos
+		if isNorthSouth then
+			size = Vector3.new(SLOT_SIZE, FLOOR_HEIGHT, WALL_THICKNESS)
+			pos = Vector3.new(centerAlongWall, wallCenterY, wallPerpPos)
+		else
+			size = Vector3.new(WALL_THICKNESS, FLOOR_HEIGHT, SLOT_SIZE)
+			pos = Vector3.new(wallPerpPos, wallCenterY, centerAlongWall)
+		end
+		makePart(parent, "ExteriorWall", size, pos, Enum.Material.Concrete, color)
+		return
+	end
+
+	-- Window dimensions
+	local winWidth = 5
+	local winHeight = 6
+	local sillHeight = 4
+	local sideWidth = (SLOT_SIZE - winWidth) / 2
+	local headerHeight = FLOOR_HEIGHT - sillHeight - winHeight
+
+	-- Sill (below window, full cell width)
+	if isNorthSouth then
+		makePart(
+			parent,
+			"ExteriorWall_Sill",
+			Vector3.new(SLOT_SIZE, sillHeight, WALL_THICKNESS),
+			Vector3.new(centerAlongWall, floorY + sillHeight / 2, wallPerpPos),
+			Enum.Material.Concrete,
+			color
+		)
+	else
+		makePart(
+			parent,
+			"ExteriorWall_Sill",
+			Vector3.new(WALL_THICKNESS, sillHeight, SLOT_SIZE),
+			Vector3.new(wallPerpPos, floorY + sillHeight / 2, centerAlongWall),
+			Enum.Material.Concrete,
+			color
+		)
+	end
+
+	-- Left side of window
+	if isNorthSouth then
+		makePart(
+			parent,
+			"ExteriorWall_WinL",
+			Vector3.new(sideWidth, winHeight, WALL_THICKNESS),
+			Vector3.new(
+				centerAlongWall - SLOT_SIZE / 2 + sideWidth / 2,
+				floorY + sillHeight + winHeight / 2,
+				wallPerpPos
+			),
+			Enum.Material.Concrete,
+			color
+		)
+	else
+		makePart(
+			parent,
+			"ExteriorWall_WinL",
+			Vector3.new(WALL_THICKNESS, winHeight, sideWidth),
+			Vector3.new(
+				wallPerpPos,
+				floorY + sillHeight + winHeight / 2,
+				centerAlongWall - SLOT_SIZE / 2 + sideWidth / 2
+			),
+			Enum.Material.Concrete,
+			color
+		)
+	end
+
+	-- Right side of window
+	if isNorthSouth then
+		makePart(
+			parent,
+			"ExteriorWall_WinR",
+			Vector3.new(sideWidth, winHeight, WALL_THICKNESS),
+			Vector3.new(
+				centerAlongWall + SLOT_SIZE / 2 - sideWidth / 2,
+				floorY + sillHeight + winHeight / 2,
+				wallPerpPos
+			),
+			Enum.Material.Concrete,
+			color
+		)
+	else
+		makePart(
+			parent,
+			"ExteriorWall_WinR",
+			Vector3.new(WALL_THICKNESS, winHeight, sideWidth),
+			Vector3.new(
+				wallPerpPos,
+				floorY + sillHeight + winHeight / 2,
+				centerAlongWall + SLOT_SIZE / 2 - sideWidth / 2
+			),
+			Enum.Material.Concrete,
+			color
+		)
+	end
+
+	-- Header (above window)
+	if headerHeight > 0 then
+		if isNorthSouth then
+			makePart(
+				parent,
+				"ExteriorWall_Header",
+				Vector3.new(SLOT_SIZE, headerHeight, WALL_THICKNESS),
+				Vector3.new(centerAlongWall, floorY + sillHeight + winHeight + headerHeight / 2, wallPerpPos),
+				Enum.Material.Concrete,
+				color
+			)
+		else
+			makePart(
+				parent,
+				"ExteriorWall_Header",
+				Vector3.new(WALL_THICKNESS, headerHeight, SLOT_SIZE),
+				Vector3.new(wallPerpPos, floorY + sillHeight + winHeight + headerHeight / 2, centerAlongWall),
+				Enum.Material.Concrete,
+				color
+			)
+		end
+	end
+end
+
 --- Build exterior walls, roof, and ground around the building
 --- @param parent Instance
 --- @param gridWidth number
@@ -1205,74 +1366,70 @@ local function buildExterior(parent: Instance, gridWidth: number, gridDepth: num
 	local centerX = buildingWidth / 2
 	local centerZ = buildingDepth / 2
 
-	-- North wall
-	makePart(
-		parent,
-		"ExteriorWall_North",
-		Vector3.new(buildingWidth, buildingHeight, WALL_THICKNESS),
-		Vector3.new(centerX, buildingHeight / 2, 0),
-		Enum.Material.Concrete,
-		extColor
-	)
-
-	-- South wall with entrance opening (centered 8-stud-wide, 12-stud-tall gap)
-	local entranceWidth = 8
-	local entranceHeight = 12
-	local leftSegWidth = (buildingWidth - entranceWidth) / 2
-	local rightSegWidth = (buildingWidth - entranceWidth) / 2
-
-	-- Left segment
-	makePart(
-		parent,
-		"ExteriorWall_South_Left",
-		Vector3.new(leftSegWidth, buildingHeight, WALL_THICKNESS),
-		Vector3.new(leftSegWidth / 2, buildingHeight / 2, buildingDepth),
-		Enum.Material.Concrete,
-		extColor
-	)
-
-	-- Right segment
-	makePart(
-		parent,
-		"ExteriorWall_South_Right",
-		Vector3.new(rightSegWidth, buildingHeight, WALL_THICKNESS),
-		Vector3.new(buildingWidth - rightSegWidth / 2, buildingHeight / 2, buildingDepth),
-		Enum.Material.Concrete,
-		extColor
-	)
-
-	-- Lintel above entrance
-	local lintelHeight = buildingHeight - entranceHeight
-	if lintelHeight > 0 then
-		makePart(
-			parent,
-			"ExteriorWall_South_Lintel",
-			Vector3.new(entranceWidth, lintelHeight, WALL_THICKNESS),
-			Vector3.new(centerX, entranceHeight + lintelHeight / 2, buildingDepth),
-			Enum.Material.Concrete,
-			extColor
-		)
+	-- North, East, West walls with windows
+	for floorIndex = 1, floorCount do
+		for cellIdx = 1, gridWidth do
+			local centerX_cell = (cellIdx - 1) * SLOT_SIZE + SLOT_SIZE / 2
+			local hasWindow = (cellIdx % 2 == 0) -- windows on even cells
+			buildExteriorSegment(parent, centerX_cell, 0, floorIndex, hasWindow, true, extColor) -- North
+		end
+		for cellIdx = 1, gridDepth do
+			local centerZ_cell = (cellIdx - 1) * SLOT_SIZE + SLOT_SIZE / 2
+			local hasWindow = (cellIdx % 2 == 0)
+			buildExteriorSegment(parent, centerZ_cell, buildingWidth, floorIndex, hasWindow, false, extColor) -- East
+			buildExteriorSegment(parent, centerZ_cell, 0, floorIndex, hasWindow, false, extColor) -- West
+		end
 	end
 
-	-- East wall
-	makePart(
-		parent,
-		"ExteriorWall_East",
-		Vector3.new(WALL_THICKNESS, buildingHeight, buildingDepth),
-		Vector3.new(buildingWidth, buildingHeight / 2, centerZ),
-		Enum.Material.Concrete,
-		extColor
-	)
+	-- South wall with entrance and windows
+	local entranceWidth = 8
+	local entranceHeight = 12
+	local entranceCenterCell = math.ceil(gridWidth / 2) -- which cell the entrance is in
 
-	-- West wall
-	makePart(
-		parent,
-		"ExteriorWall_West",
-		Vector3.new(WALL_THICKNESS, buildingHeight, buildingDepth),
-		Vector3.new(0, buildingHeight / 2, centerZ),
-		Enum.Material.Concrete,
-		extColor
-	)
+	for floorIndex = 1, floorCount do
+		for cellIdx = 1, gridWidth do
+			local centerX_cell = (cellIdx - 1) * SLOT_SIZE + SLOT_SIZE / 2
+			local floorY = (floorIndex - 1) * FLOOR_HEIGHT
+
+			if cellIdx == entranceCenterCell and floorIndex == 1 then
+				-- Build entrance opening (same as before but for one cell width)
+				local leftWidth = (SLOT_SIZE - entranceWidth) / 2
+				-- Left segment
+				makePart(
+					parent,
+					"ExteriorWall_South_Left",
+					Vector3.new(leftWidth, FLOOR_HEIGHT, WALL_THICKNESS),
+					Vector3.new(centerX_cell - SLOT_SIZE / 2 + leftWidth / 2, floorY + FLOOR_HEIGHT / 2, buildingDepth),
+					Enum.Material.Concrete,
+					extColor
+				)
+				-- Right segment
+				makePart(
+					parent,
+					"ExteriorWall_South_Right",
+					Vector3.new(leftWidth, FLOOR_HEIGHT, WALL_THICKNESS),
+					Vector3.new(centerX_cell + SLOT_SIZE / 2 - leftWidth / 2, floorY + FLOOR_HEIGHT / 2, buildingDepth),
+					Enum.Material.Concrete,
+					extColor
+				)
+				-- Lintel
+				local lintelH = FLOOR_HEIGHT - entranceHeight
+				if lintelH > 0 then
+					makePart(
+						parent,
+						"ExteriorWall_South_Lintel",
+						Vector3.new(entranceWidth, lintelH, WALL_THICKNESS),
+						Vector3.new(centerX_cell, floorY + entranceHeight + lintelH / 2, buildingDepth),
+						Enum.Material.Concrete,
+						extColor
+					)
+				end
+			else
+				local hasWindow = (cellIdx % 2 == 0)
+				buildExteriorSegment(parent, centerX_cell, buildingDepth, floorIndex, hasWindow, true, extColor)
+			end
+		end
+	end
 
 	-- Roof slab
 	makePart(
@@ -1282,16 +1439,6 @@ local function buildExterior(parent: Instance, gridWidth: number, gridDepth: num
 		Vector3.new(centerX, buildingHeight + 0.5, centerZ),
 		Enum.Material.Concrete,
 		extColor
-	)
-
-	-- Ground slab under building
-	makePart(
-		parent,
-		"BuildingGround",
-		Vector3.new(buildingWidth, 1, buildingDepth),
-		Vector3.new(centerX, -0.5, centerZ),
-		Enum.Material.Concrete,
-		Color3.fromRGB(100, 95, 85)
 	)
 end
 
@@ -1504,7 +1651,7 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 		fillRooms(floor, grid, rng, gridWidth, gridDepth)
 
 		-- Step 7: Carve doors
-		carveDoors(floor, grid, gridWidth, gridDepth)
+		carveDoors(floor, grid, gridWidth, gridDepth, rng)
 
 		-- Step 8: Ensure solvability
 		ensureSolvability(floor, grid, stairX, stairZ, gridWidth, gridDepth)
