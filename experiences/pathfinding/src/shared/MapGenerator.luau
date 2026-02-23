@@ -38,37 +38,35 @@ local OPPOSITE: { [string]: string } = {
 -- Grid helpers
 ------------------------------------------------------------------------
 
---- Create a 2D grid of given width and depth, initialized to nil
+--- Create a 2D grid of given width and depth, initialized to false
+--- Uses false (not nil) so that #row correctly reports the grid depth.
 --- @param width number
 --- @param depth number
---- @return { { any? } }
-local function createGrid(width: number, depth: number): { { any? } }
+--- @return { { any } }
+local function createGrid(width: number, depth: number): { { any } }
 	local grid = {}
 	for x = 1, width do
-		grid[x] = {}
-		for z = 1, depth do
-			grid[x][z] = nil
-		end
+		grid[x] = table.create(depth, false)
 	end
 	return grid
 end
 
 --- Check whether (x, z) is within grid bounds
---- @param grid { { any? } }
+--- @param grid { { any } }
 --- @param x number
 --- @param z number
 --- @return boolean
-local function inBounds(grid: { { any? } }, x: number, z: number): boolean
+local function inBounds(grid: { { any } }, x: number, z: number): boolean
 	return x >= 1 and x <= #grid and z >= 1 and z <= #grid[1]
 end
 
---- Check whether a grid cell is empty (nil)
---- @param grid { { any? } }
+--- Check whether a grid cell is empty (false)
+--- @param grid { { any } }
 --- @param x number
 --- @param z number
 --- @return boolean
-local function isEmpty(grid: { { any? } }, x: number, z: number): boolean
-	return inBounds(grid, x, z) and grid[x][z] == nil
+local function isEmpty(grid: { { any } }, x: number, z: number): boolean
+	return inBounds(grid, x, z) and grid[x][z] == false
 end
 
 --- Convert grid coordinates and floor index to world position (center of cell)
@@ -300,7 +298,7 @@ local function fillRooms(floor: any, grid: { { any? } }, rng: Random, gridWidth:
 			-- Check if adjacent to a hallway or lobby
 			local adjToHallwayOrLobby = false
 			for _, neighbor in getNeighbors(x, z) do
-				if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
+				if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= false then
 					local cellData = grid[neighbor.x][neighbor.z]
 					if cellData.roomType == "Hallway" or cellData.roomType == "Lobby" then
 						adjToHallwayOrLobby = true
@@ -385,7 +383,7 @@ local function fillRooms(floor: any, grid: { { any? } }, rng: Random, gridWidth:
 				end
 				local adjToRoom = false
 				for _, neighbor in getNeighbors(x, z) do
-					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
+					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= false then
 						adjToRoom = true
 						break
 					end
@@ -424,12 +422,12 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 	for x = 1, gridWidth do
 		for z = 1, gridDepth do
 			local cellA = grid[x][z]
-			if cellA == nil then
+			if cellA == false then
 				continue
 			end
 
 			-- Check east neighbor
-			if x + 1 <= gridWidth and grid[x + 1][z] ~= nil then
+			if x + 1 <= gridWidth and grid[x + 1][z] ~= false then
 				local cellB = grid[x + 1][z]
 				if cellA.roomId ~= cellB.roomId then
 					-- Check if both templates allow doors on these edges
@@ -457,7 +455,7 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 			end
 
 			-- Check south neighbor
-			if z + 1 <= gridDepth and grid[x][z + 1] ~= nil then
+			if z + 1 <= gridDepth and grid[x][z + 1] ~= false then
 				local cellB = grid[x][z + 1]
 				if cellA.roomId ~= cellB.roomId then
 					local templateA = RoomTemplates.templates[cellA.roomType]
@@ -493,7 +491,7 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 					break
 				end
 				for _, neighbor in getNeighbors(cell.x, cell.z) do
-					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
+					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= false then
 						local neighborCell = grid[neighbor.x][neighbor.z]
 						if neighborCell.roomId ~= room.id then
 							local dir = neighbor.dir
@@ -553,7 +551,7 @@ local function ensureSolvability(
 
 	-- Find stairwell room id
 	local stairwellCell = grid[startX][startZ]
-	if stairwellCell == nil then
+	if stairwellCell == false then
 		return
 	end
 	local startRoomId = stairwellCell.roomId
@@ -595,7 +593,7 @@ local function ensureSolvability(
 					if connected then
 						break
 					end
-					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
+					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= false then
 						local neighborCell = grid[neighbor.x][neighbor.z]
 						if visited[neighborCell.roomId] then
 							-- Force a door
@@ -1086,7 +1084,7 @@ local function buildFloorParts(
 	for x = 1, gridWidth do
 		for z = 1, gridDepth do
 			local cellData = grid[x][z]
-			if cellData == nil then
+			if cellData == false then
 				continue
 			end
 
@@ -1123,7 +1121,7 @@ local function buildFloorParts(
 
 				-- Check if neighbor is same room (no wall needed)
 				local sameRoom = false
-				if inBounds(grid, nx, nz) and grid[nx][nz] ~= nil then
+				if inBounds(grid, nx, nz) and grid[nx][nz] ~= false then
 					if grid[nx][nz].roomId == cellData.roomId then
 						sameRoom = true
 					end
@@ -1136,7 +1134,7 @@ local function buildFloorParts(
 
 				-- Avoid duplicate walls: only build shared interior edges from one side
 				-- East/south cell owns the wall; west/north neighbor skips it
-				local neighborExists = inBounds(grid, nx, nz) and grid[nx][nz] ~= nil
+				local neighborExists = inBounds(grid, nx, nz) and grid[nx][nz] ~= false
 				if neighborExists and (dir == "west" or dir == "north") then
 					continue
 				end
