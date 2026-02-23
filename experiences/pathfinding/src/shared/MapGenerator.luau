@@ -1727,7 +1727,12 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 
 	-- North strip (behind building, gap away from wall)
 	local nDepth = margin - gap
-	makeRainStrip(parent, "RainNorth", Vector3.new(buildingWidth + margin * 2, 1, nDepth), Vector3.new(centerX, rainY, -gap - nDepth / 2))
+	makeRainStrip(
+		parent,
+		"RainNorth",
+		Vector3.new(buildingWidth + margin * 2, 1, nDepth),
+		Vector3.new(centerX, rainY, -gap - nDepth / 2)
+	)
 
 	-- South strip (in front of building, gap away from wall)
 	local sDepth = margin - gap
@@ -1740,7 +1745,12 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 
 	-- West strip (left of building, gap away from wall)
 	local wWidth = margin - gap
-	makeRainStrip(parent, "RainWest", Vector3.new(wWidth, 1, buildingDepth), Vector3.new(-gap - wWidth / 2, rainY, centerZ))
+	makeRainStrip(
+		parent,
+		"RainWest",
+		Vector3.new(wWidth, 1, buildingDepth),
+		Vector3.new(-gap - wWidth / 2, rainY, centerZ)
+	)
 
 	-- East strip (right of building, gap away from wall)
 	local eWidth = margin - gap
