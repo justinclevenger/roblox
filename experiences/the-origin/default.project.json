@@ -1,0 +1,73 @@
+{
+	"name": "the-origin",
+	"globIgnorePaths": ["**/*.spec.luau"],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "src/shared"
+			}
+		},
+		"ServerScriptService": {
+			"Server": {
+				"$path": "src/server"
+			}
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		},
+		"Workspace": {
+			"$properties": {
+				"Gravity": 196.2
+			}
+		},
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"Technology": "Future",
+				"GlobalShadows": true,
+				"Brightness": 0.2,
+				"ClockTime": 0,
+				"FogEnd": 200,
+				"FogStart": 50,
+				"FogColor": [0.05, 0.05, 0.08],
+				"Ambient": [0.02, 0.02, 0.03],
+				"OutdoorAmbient": [0.01, 0.01, 0.02],
+				"ExposureCompensation": -0.5
+			},
+			"Atmosphere": {
+				"$className": "Atmosphere",
+				"$properties": {
+					"Density": 0.4,
+					"Offset": 0.1,
+					"Color": [0.15, 0.15, 0.18],
+					"Decay": [0.08, 0.08, 0.1],
+					"Glare": 0,
+					"Haze": 8
+				}
+			},
+			"ColorCorrection": {
+				"$className": "ColorCorrectionEffect",
+				"$properties": {
+					"Brightness": -0.05,
+					"Contrast": 0.15,
+					"Saturation": -0.3,
+					"TintColor": [0.9, 0.85, 0.95]
+				}
+			}
+		},
+		"SoundService": {
+			"$className": "SoundService",
+			"$properties": {
+				"AmbientReverb": "Quarry"
+			}
+		},
+		"StarterGui": {
+			"$className": "StarterGui"
+		}
+	}
+}

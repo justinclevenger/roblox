@@ -25,6 +25,13 @@ Thumbs.db
 *.swp
 *.swo
 
+# Pipeline output (captured footage, renders, audio)
+pipeline/output/
+pipeline/node_modules/
+
+# Node.js
+node_modules/
+
 # Secrets
 .env
 .roblosecurity
