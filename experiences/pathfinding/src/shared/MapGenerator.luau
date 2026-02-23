@@ -1715,7 +1715,6 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 	local centerZ = buildingDepth / 2
 	local margin = 200 -- how far rain extends beyond building
 	local totalWidth = buildingWidth + margin * 2
-	local totalDepth = buildingDepth + margin * 2
 	local rainY = 80
 
 	-- North strip (behind building)
