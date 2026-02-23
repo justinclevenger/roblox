@@ -23,15 +23,15 @@ local WALL_THICKNESS: number = 1
 local DIRECTIONS: { [string]: { x: number, z: number } } = {
 	north = { x = 0, z = -1 },
 	south = { x = 0, z = 1 },
-	east  = { x = 1, z = 0 },
-	west  = { x = -1, z = 0 },
+	east = { x = 1, z = 0 },
+	west = { x = -1, z = 0 },
 }
 
 local OPPOSITE: { [string]: string } = {
 	north = "south",
 	south = "north",
-	east  = "west",
-	west  = "east",
+	east = "west",
+	west = "east",
 }
 
 ------------------------------------------------------------------------
@@ -123,7 +123,12 @@ end
 --- @param roomType string
 --- @param cells { { x: number, z: number } }
 --- @return any -- the created room record
-local function placeRoomOnGrid(floor: any, grid: { { any? } }, roomType: string, cells: { { x: number, z: number } }): any
+local function placeRoomOnGrid(
+	floor: any,
+	grid: { { any? } },
+	roomType: string,
+	cells: { { x: number, z: number } }
+): any
 	local roomId = #floor.rooms + 1
 	local room = {
 		id = roomId,
@@ -210,7 +215,15 @@ end
 --- @param gridWidth number
 --- @param gridDepth number
 --- @return { { x: number, z: number } }
-local function growHallways(floor: any, grid: { { any? } }, startX: number, startZ: number, rng: Random, gridWidth: number, gridDepth: number): { { x: number, z: number } }
+local function growHallways(
+	floor: any,
+	grid: { { any? } },
+	startX: number,
+	startZ: number,
+	rng: Random,
+	gridWidth: number,
+	gridDepth: number
+): { { x: number, z: number } }
 	local hallwayCells = {}
 	local dirNames = { "north", "south", "east", "west" }
 
@@ -328,7 +341,9 @@ local function fillRooms(floor: any, grid: { { any? } }, rng: Random, gridWidth:
 					end
 					table.insert(cells, { x = cx, z = cz })
 				end
-				if not canFit then break end
+				if not canFit then
+					break
+				end
 			end
 
 			if canFit then
@@ -429,8 +444,14 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 						-- Record on room objects
 						local roomA = floor.rooms[cellA.roomId]
 						local roomB = floor.rooms[cellB.roomId]
-						table.insert(roomA.doors, { dir = "east", fromCell = { x = x, z = z }, toRoomId = cellB.roomId })
-						table.insert(roomB.doors, { dir = "west", fromCell = { x = x + 1, z = z }, toRoomId = cellA.roomId })
+						table.insert(
+							roomA.doors,
+							{ dir = "east", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
+						)
+						table.insert(
+							roomB.doors,
+							{ dir = "west", fromCell = { x = x + 1, z = z }, toRoomId = cellA.roomId }
+						)
 					end
 				end
 			end
@@ -448,8 +469,14 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 						table.insert(cellB.doors, { dir = "north", neighborRoomId = cellA.roomId })
 						local roomA = floor.rooms[cellA.roomId]
 						local roomB = floor.rooms[cellB.roomId]
-						table.insert(roomA.doors, { dir = "south", fromCell = { x = x, z = z }, toRoomId = cellB.roomId })
-						table.insert(roomB.doors, { dir = "north", fromCell = { x = x, z = z + 1 }, toRoomId = cellA.roomId })
+						table.insert(
+							roomA.doors,
+							{ dir = "south", fromCell = { x = x, z = z }, toRoomId = cellB.roomId }
+						)
+						table.insert(
+							roomB.doors,
+							{ dir = "north", fromCell = { x = x, z = z + 1 }, toRoomId = cellA.roomId }
+						)
 					end
 				end
 			end
@@ -462,7 +489,9 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 			-- Force-connect to any adjacent room
 			local connected = false
 			for _, cell in room.cells do
-				if connected then break end
+				if connected then
+					break
+				end
 				for _, neighbor in getNeighbors(cell.x, cell.z) do
 					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
 						local neighborCell = grid[neighbor.x][neighbor.z]
@@ -470,11 +499,20 @@ local function carveDoors(floor: any, grid: { { any? } }, gridWidth: number, gri
 							local dir = neighbor.dir
 							local oppDir = OPPOSITE[dir]
 							-- Add door on both sides
-							table.insert(grid[cell.x][cell.z].doors, { dir = dir, neighborRoomId = neighborCell.roomId })
+							table.insert(
+								grid[cell.x][cell.z].doors,
+								{ dir = dir, neighborRoomId = neighborCell.roomId }
+							)
 							table.insert(neighborCell.doors, { dir = oppDir, neighborRoomId = room.id })
-							table.insert(room.doors, { dir = dir, fromCell = { x = cell.x, z = cell.z }, toRoomId = neighborCell.roomId })
+							table.insert(
+								room.doors,
+								{ dir = dir, fromCell = { x = cell.x, z = cell.z }, toRoomId = neighborCell.roomId }
+							)
 							local neighborRoom = floor.rooms[neighborCell.roomId]
-							table.insert(neighborRoom.doors, { dir = oppDir, fromCell = { x = neighbor.x, z = neighbor.z }, toRoomId = room.id })
+							table.insert(
+								neighborRoom.doors,
+								{ dir = oppDir, fromCell = { x = neighbor.x, z = neighbor.z }, toRoomId = room.id }
+							)
 							connected = true
 							break
 						end
@@ -496,7 +534,14 @@ end
 --- @param startZ number -- stairwell Z
 --- @param gridWidth number
 --- @param gridDepth number
-local function ensureSolvability(floor: any, grid: { { any? } }, startX: number, startZ: number, _gridWidth: number, _gridDepth: number)
+local function ensureSolvability(
+	floor: any,
+	grid: { { any? } },
+	startX: number,
+	startZ: number,
+	_gridWidth: number,
+	_gridDepth: number
+)
 	-- Build room adjacency graph from doors
 	local adjacency: { [number]: { [number]: boolean } } = {}
 	for _, room in floor.rooms do
@@ -508,7 +553,9 @@ local function ensureSolvability(floor: any, grid: { { any? } }, startX: number,
 
 	-- Find stairwell room id
 	local stairwellCell = grid[startX][startZ]
-	if stairwellCell == nil then return end
+	if stairwellCell == nil then
+		return
+	end
 	local startRoomId = stairwellCell.roomId
 
 	-- Flood fill from stairwell room
@@ -541,20 +588,33 @@ local function ensureSolvability(floor: any, grid: { { any? } }, startX: number,
 			-- Find nearest reachable neighbor room by checking adjacent cells
 			local connected = false
 			for _, cell in room.cells do
-				if connected then break end
+				if connected then
+					break
+				end
 				for _, neighbor in getNeighbors(cell.x, cell.z) do
-					if connected then break end
+					if connected then
+						break
+					end
 					if inBounds(grid, neighbor.x, neighbor.z) and grid[neighbor.x][neighbor.z] ~= nil then
 						local neighborCell = grid[neighbor.x][neighbor.z]
 						if visited[neighborCell.roomId] then
 							-- Force a door
 							local dir = neighbor.dir
 							local oppDir = OPPOSITE[dir]
-							table.insert(grid[cell.x][cell.z].doors, { dir = dir, neighborRoomId = neighborCell.roomId })
+							table.insert(
+								grid[cell.x][cell.z].doors,
+								{ dir = dir, neighborRoomId = neighborCell.roomId }
+							)
 							table.insert(neighborCell.doors, { dir = oppDir, neighborRoomId = room.id })
-							table.insert(room.doors, { dir = dir, fromCell = { x = cell.x, z = cell.z }, toRoomId = neighborCell.roomId })
+							table.insert(
+								room.doors,
+								{ dir = dir, fromCell = { x = cell.x, z = cell.z }, toRoomId = neighborCell.roomId }
+							)
 							local neighborRoom = floor.rooms[neighborCell.roomId]
-							table.insert(neighborRoom.doors, { dir = oppDir, fromCell = { x = neighbor.x, z = neighbor.z }, toRoomId = room.id })
+							table.insert(
+								neighborRoom.doors,
+								{ dir = oppDir, fromCell = { x = neighbor.x, z = neighbor.z }, toRoomId = room.id }
+							)
 
 							-- Update adjacency
 							if not adjacency[room.id] then
@@ -613,7 +673,9 @@ local function applyConditions(floor: any, rng: Random, floorIndex: number)
 		end
 
 		local template = RoomTemplates.templates[room.type]
-		if template == nil then continue end
+		if template == nil then
+			continue
+		end
 
 		-- Pick a random non-"normal" condition from template's conditions list
 		local nonNormalConditions = {}
@@ -671,7 +733,14 @@ end
 --- @param material Enum.Material
 --- @param color Color3
 --- @return Part
-local function makePart(parent: Instance, name: string, size: Vector3, position: Vector3, material: Enum.Material, color: Color3): Part
+local function makePart(
+	parent: Instance,
+	name: string,
+	size: Vector3,
+	position: Vector3,
+	material: Enum.Material,
+	color: Color3
+): Part
 	local part = Instance.new("Part")
 	part.Name = name
 	part.Size = size
@@ -691,7 +760,15 @@ end
 --- @param material Enum.Material
 --- @param color Color3
 --- @param roomType string
-local function buildFloor(parent: Instance, gridX: number, gridZ: number, floorIndex: number, material: Enum.Material, color: Color3, roomType: string)
+local function buildFloor(
+	parent: Instance,
+	gridX: number,
+	gridZ: number,
+	floorIndex: number,
+	material: Enum.Material,
+	color: Color3,
+	roomType: string
+)
 	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
 	local floorY = worldPos.Y - 0.5
 	local part = makePart(
@@ -732,7 +809,15 @@ end
 --- @param dir string
 --- @param material Enum.Material
 --- @param color Color3
-local function buildWall(parent: Instance, gridX: number, gridZ: number, floorIndex: number, dir: string, material: Enum.Material, color: Color3)
+local function buildWall(
+	parent: Instance,
+	gridX: number,
+	gridZ: number,
+	floorIndex: number,
+	dir: string,
+	material: Enum.Material,
+	color: Color3
+)
 	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
 	local floorY = worldPos.Y
 	local wallCenterY = floorY + FLOOR_HEIGHT / 2
@@ -765,7 +850,15 @@ end
 --- @param dir string
 --- @param material Enum.Material
 --- @param color Color3
-local function buildDoorFrame(parent: Instance, gridX: number, gridZ: number, floorIndex: number, dir: string, material: Enum.Material, color: Color3)
+local function buildDoorFrame(
+	parent: Instance,
+	gridX: number,
+	gridZ: number,
+	floorIndex: number,
+	dir: string,
+	material: Enum.Material,
+	color: Color3
+)
 	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
 	local floorY = worldPos.Y
 	local doorWidth = 6
@@ -978,7 +1071,15 @@ end
 --- @param gridWidth number
 --- @param gridDepth number
 --- @param isTopFloor boolean
-local function buildFloorParts(parent: Instance, floor: any, grid: { { any? } }, floorIndex: number, gridWidth: number, gridDepth: number, isTopFloor: boolean)
+local function buildFloorParts(
+	parent: Instance,
+	floor: any,
+	grid: { { any? } },
+	floorIndex: number,
+	gridWidth: number,
+	gridDepth: number,
+	isTopFloor: boolean
+)
 	-- Track which rooms have had furniture built (use first cell)
 	local furnitureBuilt: { [number]: boolean } = {}
 
@@ -991,7 +1092,9 @@ local function buildFloorParts(parent: Instance, floor: any, grid: { { any? } },
 
 			local room = floor.rooms[cellData.roomId]
 			local template = RoomTemplates.templates[cellData.roomType]
-			if template == nil then continue end
+			if template == nil then
+				continue
+			end
 
 			local condition = room.condition or "normal"
 			local wallColor, floorColor = getRoomColor(cellData.roomType, condition)
@@ -1233,8 +1336,12 @@ local function buildForest(parent: Instance, gridWidth: number, gridDepth: numbe
 		local tz = centerZ + rng:NextNumber() * (groundSize - 20) - (groundSize - 20) / 2
 
 		-- Skip if inside or near building
-		if tx > -buildingMargin and tx < buildingWidth + buildingMargin
-			and tz > -buildingMargin and tz < buildingDepth + buildingMargin then
+		if
+			tx > -buildingMargin
+			and tx < buildingWidth + buildingMargin
+			and tz > -buildingMargin
+			and tz < buildingDepth + buildingMargin
+		then
 			continue
 		end
 
@@ -1267,11 +1374,7 @@ local function buildForest(parent: Instance, gridWidth: number, gridDepth: numbe
 			Vector3.new(trunkHeight, trunkRadius * 2, trunkRadius * 2),
 			Vector3.new(tx, trunkHeight / 2, tz),
 			Enum.Material.WoodPlanks,
-			Color3.fromRGB(
-				rng:NextInteger(80, 110),
-				rng:NextInteger(55, 75),
-				rng:NextInteger(30, 50)
-			)
+			Color3.fromRGB(rng:NextInteger(80, 110), rng:NextInteger(55, 75), rng:NextInteger(30, 50))
 		)
 		trunk.Shape = Enum.PartType.Cylinder
 		trunk.Orientation = Vector3.new(0, 0, 90)
@@ -1283,11 +1386,7 @@ local function buildForest(parent: Instance, gridWidth: number, gridDepth: numbe
 			Vector3.new(canopySize, canopySize, canopySize),
 			Vector3.new(tx, trunkHeight + canopySize / 3, tz),
 			Enum.Material.Grass,
-			Color3.fromRGB(
-				rng:NextInteger(30, 70),
-				rng:NextInteger(90, 140),
-				rng:NextInteger(25, 55)
-			)
+			Color3.fromRGB(rng:NextInteger(30, 70), rng:NextInteger(90, 140), rng:NextInteger(25, 55))
 		)
 		canopy.Shape = Enum.PartType.Ball
 		canopy.CanCollide = false

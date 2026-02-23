@@ -263,19 +263,21 @@ function Pathfinding.smoothPath(path: { Vector3 }, subdivisions: number?): { Vec
 				local t2 = t * t
 				local t3 = t2 * t
 
-				local x = 0.5 * (
-					(2 * p1.X) +
-					(-p0.X + p2.X) * t +
-					(2 * p0.X - 5 * p1.X + 4 * p2.X - p3.X) * t2 +
-					(-p0.X + 3 * p1.X - 3 * p2.X + p3.X) * t3
-				)
+				local x = 0.5
+					* (
+						(2 * p1.X)
+						+ (-p0.X + p2.X) * t
+						+ (2 * p0.X - 5 * p1.X + 4 * p2.X - p3.X) * t2
+						+ (-p0.X + 3 * p1.X - 3 * p2.X + p3.X) * t3
+					)
 				local y = p1.Y -- Keep Y flat to avoid floating/sinking
-				local z = 0.5 * (
-					(2 * p1.Z) +
-					(-p0.Z + p2.Z) * t +
-					(2 * p0.Z - 5 * p1.Z + 4 * p2.Z - p3.Z) * t2 +
-					(-p0.Z + 3 * p1.Z - 3 * p2.Z + p3.Z) * t3
-				)
+				local z = 0.5
+					* (
+						(2 * p1.Z)
+						+ (-p0.Z + p2.Z) * t
+						+ (2 * p0.Z - 5 * p1.Z + 4 * p2.Z - p3.Z) * t2
+						+ (-p0.Z + 3 * p1.Z - 3 * p2.Z + p3.Z) * t3
+					)
 
 				table.insert(smoothed, Vector3.new(x, y, z))
 			end
@@ -291,18 +293,19 @@ end
 --- @param maxRadius number -- Maximum wander distance
 --- @param maxAttempts number? -- How many times to try before giving up (default 10)
 --- @return Vector3? -- A walkable position, or nil if none found
-function Pathfinding.getRandomWalkablePosition(origin: Vector3, minRadius: number, maxRadius: number, maxAttempts: number?): Vector3?
+function Pathfinding.getRandomWalkablePosition(
+	origin: Vector3,
+	minRadius: number,
+	maxRadius: number,
+	maxAttempts: number?
+): Vector3?
 	maxAttempts = maxAttempts or 10
 
 	for _ = 1, maxAttempts do
 		local angle = math.random() * math.pi * 2
 		local distance = minRadius + math.random() * (maxRadius - minRadius)
 
-		local offset = Vector3.new(
-			math.cos(angle) * distance,
-			0,
-			math.sin(angle) * distance
-		)
+		local offset = Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
 
 		local candidate = toGrid(origin + offset)
 
@@ -378,7 +381,12 @@ end
 --- @param floorConnections { [number]: { Vector3 } } -- Floor index to stairwell positions (from MapGenerator.getFloorConnections())
 --- @param floorHeight number? -- Height of each floor in studs (default 16)
 --- @return { Vector3 }? -- Array of waypoints spanning all floors, or nil on failure
-function Pathfinding.findPathMultiFloor(startPos: Vector3, targetPos: Vector3, floorConnections: { [number]: { Vector3 } }, floorHeight: number?): { Vector3 }?
+function Pathfinding.findPathMultiFloor(
+	startPos: Vector3,
+	targetPos: Vector3,
+	floorConnections: { [number]: { Vector3 } },
+	floorHeight: number?
+): { Vector3 }?
 	local DEFAULT_FLOOR_HEIGHT = 16
 	floorHeight = floorHeight or DEFAULT_FLOOR_HEIGHT
 

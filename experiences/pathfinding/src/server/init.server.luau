@@ -18,11 +18,13 @@ local mapData = MapGenerator.generate({
 
 local _floorConnections = MapGenerator.getFloorConnections()
 
-print(("[Server] Asylum generated: %d floors, stairwell at (%d, %d)"):format(
-	mapData.floorCount,
-	mapData.stairwellPos.x,
-	mapData.stairwellPos.z
-))
+print(
+	("[Server] Asylum generated: %d floors, stairwell at (%d, %d)"):format(
+		mapData.floorCount,
+		mapData.stairwellPos.x,
+		mapData.stairwellPos.z
+	)
+)
 
 for i = 1, mapData.floorCount do
 	print(("[Server]   Floor %d: %d rooms"):format(i, #mapData.floors[i].rooms))
@@ -36,11 +38,8 @@ local lobbySpawnPos: Vector3? = nil
 for _, room in mapData.floors[1].rooms do
 	if room.type == "Lobby" then
 		local cell = room.cells[1]
-		lobbySpawnPos = Vector3.new(
-			(cell.x - 1) * SLOT_SIZE + SLOT_SIZE / 2,
-			3,
-			(cell.z - 1) * SLOT_SIZE + SLOT_SIZE / 2
-		)
+		lobbySpawnPos =
+			Vector3.new((cell.x - 1) * SLOT_SIZE + SLOT_SIZE / 2, 3, (cell.z - 1) * SLOT_SIZE + SLOT_SIZE / 2)
 		break
 	end
 end
