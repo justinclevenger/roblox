@@ -1107,29 +1107,21 @@ local function buildFloorParts(
 			local floorY = worldPos.Y - 0.5
 
 			-- Build floor slab (inset to fit within walls)
-			local floorPart = makePart(
-				parent,
-				"Floor",
-				Vector3.new(slabSizeX, 1, slabSizeZ),
-				Vector3.new(slabCenterX, floorY, slabCenterZ),
-				template.floorMaterial,
-				floorColor
-			)
-			floorPart:SetAttribute("RoomType", cellData.roomType)
-
-			-- Build ceiling (full SLOT_SIZE — no inset so big rooms tile seamlessly)
-			-- Skip stairwell rooms entirely so the shaft stays open
-			if cellData.roomType ~= "Stairwell" then
-				local ceilingY = worldPos.Y + FLOOR_HEIGHT + 0.5
-				makePart(
+			-- Skip stairwell on floors above 1 so the shaft stays open
+			if cellData.roomType ~= "Stairwell" or floorIndex == 1 then
+				local floorPart = makePart(
 					parent,
-					"Ceiling",
-					Vector3.new(SLOT_SIZE, 1, SLOT_SIZE),
-					Vector3.new(worldPos.X, ceilingY, worldPos.Z),
-					Enum.Material.Concrete,
-					wallColor
+					"Floor",
+					Vector3.new(slabSizeX, 1, slabSizeZ),
+					Vector3.new(slabCenterX, floorY, slabCenterZ),
+					template.floorMaterial,
+					floorColor
 				)
+				floorPart:SetAttribute("RoomType", cellData.roomType)
 			end
+
+			-- No separate ceiling — the floor slab of the level above serves
+			-- as the ceiling, and the exterior roof covers the top floor.
 
 			-- Build walls for each direction
 			for dir, delta in DIRECTIONS do
