@@ -912,6 +912,15 @@ local function buildDoorFrame(
 			Enum.Material.WoodPlanks,
 			trimColor
 		)
+		-- Metal threshold at floor level
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_Threshold",
+			Vector3.new(doorWidth + trimThick * 2, 0.3, trimDepth),
+			Vector3.new(worldPos.X, floorY + 0.15, wallZ),
+			Enum.Material.Metal,
+			Color3.fromRGB(120, 120, 125)
+		)
 	elseif dir == "east" or dir == "west" then
 		local wallX
 		if dir == "east" then
@@ -986,6 +995,15 @@ local function buildDoorFrame(
 			Vector3.new(wallX, floorY + doorHeight - trimThick / 2, worldPos.Z),
 			Enum.Material.WoodPlanks,
 			trimColor
+		)
+		-- Metal threshold at floor level
+		makePart(
+			parent,
+			"DoorTrim_" .. dir .. "_Threshold",
+			Vector3.new(trimDepth, 0.3, doorWidth + trimThick * 2),
+			Vector3.new(wallX, floorY + 0.15, worldPos.Z),
+			Enum.Material.Metal,
+			Color3.fromRGB(120, 120, 125)
 		)
 	end
 end
@@ -1647,28 +1665,28 @@ end
 -- Rain
 ------------------------------------------------------------------------
 
---- Build a rain particle emitter above the building
+--- Create a rain emitter part with standard rain settings
 --- @param parent Instance
---- @param gridWidth number
---- @param gridDepth number
-local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
-	local buildingWidth = gridWidth * SLOT_SIZE
-	local buildingDepth = gridDepth * SLOT_SIZE
-	local centerX = buildingWidth / 2
-	local centerZ = buildingDepth / 2
-
+--- @param name string
+--- @param size Vector3
+--- @param position Vector3
+local function makeRainStrip(parent: Instance, name: string, size: Vector3, position: Vector3)
 	local rainPart = Instance.new("Part")
-	rainPart.Name = "RainEmitter"
-	rainPart.Size = Vector3.new(500, 1, 500)
-	rainPart.Position = Vector3.new(centerX, 80, centerZ)
+	rainPart.Name = name
+	rainPart.Size = size
+	rainPart.Position = position
 	rainPart.Anchored = true
 	rainPart.Transparency = 1
 	rainPart.CanCollide = false
 	rainPart.Parent = parent
 
+	-- Scale rate to surface area relative to a 500x500 reference
+	local area = size.X * size.Z
+	local rate = math.clamp(math.floor(area / (500 * 500) * 3000), 50, 3000)
+
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "Rain"
-	emitter.Rate = 3000
+	emitter.Rate = rate
 	emitter.Lifetime = NumberRange.new(2, 4)
 	emitter.Speed = NumberRange.new(50, 65)
 	emitter.EmissionDirection = Enum.NormalId.Bottom
@@ -1684,6 +1702,48 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 		NumberSequenceKeypoint.new(1, 1.0),
 	})
 	emitter.Parent = rainPart
+end
+
+--- Build rain emitters around (but not over) the building
+--- @param parent Instance
+--- @param gridWidth number
+--- @param gridDepth number
+local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
+	local buildingWidth = gridWidth * SLOT_SIZE
+	local buildingDepth = gridDepth * SLOT_SIZE
+	local centerX = buildingWidth / 2
+	local centerZ = buildingDepth / 2
+	local margin = 200 -- how far rain extends beyond building
+	local totalWidth = buildingWidth + margin * 2
+	local totalDepth = buildingDepth + margin * 2
+	local rainY = 80
+
+	-- North strip (behind building)
+	makeRainStrip(parent, "RainNorth", Vector3.new(totalWidth, 1, margin), Vector3.new(centerX, rainY, -margin / 2))
+
+	-- South strip (in front of building)
+	makeRainStrip(
+		parent,
+		"RainSouth",
+		Vector3.new(totalWidth, 1, margin),
+		Vector3.new(centerX, rainY, buildingDepth + margin / 2)
+	)
+
+	-- West strip (left of building, between north and south)
+	makeRainStrip(
+		parent,
+		"RainWest",
+		Vector3.new(margin, 1, buildingDepth),
+		Vector3.new(-margin / 2, rainY, centerZ)
+	)
+
+	-- East strip (right of building, between north and south)
+	makeRainStrip(
+		parent,
+		"RainEast",
+		Vector3.new(margin, 1, buildingDepth),
+		Vector3.new(buildingWidth + margin / 2, rainY, centerZ)
+	)
 end
 
 ------------------------------------------------------------------------
