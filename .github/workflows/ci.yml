@@ -128,11 +128,11 @@ jobs:
             fi
 
             echo "::group::Deploying $name (universe=$UNIVERSE_ID, place=$PLACE_ID)"
-            rbxcloud place publish \
+            rbxcloud experience publish \
               --universe-id "$UNIVERSE_ID" \
               --place-id "$PLACE_ID" \
-              --filepath "$BUILD_FILE" \
-              --publish-type published \
+              --filename "$BUILD_FILE" \
+              --version-type published \
               --api-key "$ROBLOX_API_KEY"
             echo "Deployed $name"
             echo "::endgroup::"
