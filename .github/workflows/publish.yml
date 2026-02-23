@@ -1,0 +1,75 @@
+name: Publish to Roblox
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "experiences/**"
+
+  workflow_dispatch:
+    inputs:
+      experience:
+        description: "Experience to publish (leave empty for all changed)"
+        required: false
+        type: string
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      experiences: ${{ steps.changes.outputs.experiences }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed experiences
+        id: changes
+        run: |
+          if [ -n "${{ inputs.experience }}" ]; then
+            echo 'experiences=["${{ inputs.experience }}"]' >> "$GITHUB_OUTPUT"
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- experiences/ \
+              | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
+            echo "experiences=$CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.experiences != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        experience: ${{ fromJson(needs.detect-changes.outputs.experiences) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+
+      - name: Lint
+        run: selene experiences/${{ matrix.experience }}/src/
+
+      - name: Build
+        run: ./scripts/build.sh ${{ matrix.experience }}
+
+      - name: Resolve place config
+        id: config
+        run: |
+          # Map experience names to universe/place IDs stored as repo vars
+          NAME="${{ matrix.experience }}"
+          UPPER=$(echo "$NAME" | tr '[:lower:]-' '[:upper:]_')
+          echo "universe_var=${UPPER}_UNIVERSE_ID" >> "$GITHUB_OUTPUT"
+          echo "place_var=${UPPER}_PLACE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Roblox
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ vars[steps.config.outputs.universe_var] }}
+          PLACE_ID: ${{ vars[steps.config.outputs.place_var] }}
+        run: |
+          if [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+            echo "::warning::No UNIVERSE_ID/PLACE_ID configured for ${{ matrix.experience }}, skipping publish"
+            exit 0
+          fi
+          ./scripts/publish.sh ${{ matrix.experience }} "$UNIVERSE_ID" "$PLACE_ID"

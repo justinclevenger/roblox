@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+
+      - name: Lint with selene
+        run: selene experiences/ packages/
+
+      - name: Check formatting with stylua
+        run: stylua --check experiences/ packages/
+
+      - name: Build all experiences
+        run: ./scripts/build.sh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbxl-builds
+          path: build/*.rbxl
+          retention-days: 30
