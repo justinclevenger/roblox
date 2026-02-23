@@ -128,13 +128,23 @@ jobs:
             fi
 
             echo "::group::Deploying $name (universe=$UNIVERSE_ID, place=$PLACE_ID)"
-            rbxcloud experience publish \
-              --universe-id "$UNIVERSE_ID" \
-              --place-id "$PLACE_ID" \
-              --filename "$BUILD_FILE" \
-              --version-type published \
-              --api-key "$ROBLOX_API_KEY"
-            echo "Deployed $name"
+            for attempt in 1 2 3 4 5; do
+              if rbxcloud experience publish \
+                --universe-id "$UNIVERSE_ID" \
+                --place-id "$PLACE_ID" \
+                --filename "$BUILD_FILE" \
+                --version-type published \
+                --api-key "$ROBLOX_API_KEY"; then
+                echo "Deployed $name"
+                break
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to deploy $name after 5 attempts"
+                exit 1
+              fi
+              echo "Attempt $attempt failed, retrying in 15s..."
+              sleep 15
+            done
             echo "::endgroup::"
           done
 
