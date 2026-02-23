@@ -860,21 +860,63 @@ local function generateWarren(
 		graf:SetAttribute("IsAccurate", i % 2 == 0) -- 50% correct
 	end
 
-	-- Fog volumes in deeper sections
+	-- Dense fog blanket covering the entire warren
+	-- Upper warren (entry area) - moderate fog
 	Shared.createFogVolume(
-		tileWorldPos(1, -5) + Vector3.new(0, 2, 0),
-		Vector3.new(TILE_SIZE * 3, TUNNEL_HEIGHT, TILE_SIZE * 3),
+		tileWorldPos(1, -2) + Vector3.new(0, TUNNEL_HEIGHT / 2, 0),
+		Vector3.new(TILE_SIZE * 6, TUNNEL_HEIGHT + 2, TILE_SIZE * 4),
 		warren,
-		Color3.fromRGB(15, 15, 20),
-		0.94
+		Color3.fromRGB(10, 10, 14),
+		0.65
 	)
+	-- Mid warren (echo chambers, mirror room) - thick fog
 	Shared.createFogVolume(
-		tileWorldPos(2, -9) + Vector3.new(0, 2, 0),
-		Vector3.new(TILE_SIZE * 2, TUNNEL_HEIGHT, TILE_SIZE * 2),
+		tileWorldPos(2, -6) + Vector3.new(0, TUNNEL_HEIGHT / 2, 0),
+		Vector3.new(TILE_SIZE * 6, TUNNEL_HEIGHT + 2, TILE_SIZE * 5),
 		warren,
-		Color3.fromRGB(12, 10, 15),
-		0.92
+		Color3.fromRGB(8, 8, 12),
+		0.55
 	)
+	-- Deep warren (the narrow, grotto) - very thick fog
+	Shared.createFogVolume(
+		tileWorldPos(2, -10) + Vector3.new(0, TUNNEL_HEIGHT / 2, 0),
+		Vector3.new(TILE_SIZE * 5, TUNNEL_HEIGHT + 2, TILE_SIZE * 5),
+		warren,
+		Color3.fromRGB(5, 5, 10),
+		0.45
+	)
+
+	-- Smoke emitters placed throughout the warren for volumetric fog effect
+	local smokePositions = {
+		tileWorldPos(0, -1) + Vector3.new(0, 1, 0),
+		tileWorldPos(1, -3) + Vector3.new(0, 1, 0),
+		tileWorldPos(1, -5) + Vector3.new(0, 1, 0),
+		tileWorldPos(2, -6) + Vector3.new(0, 1, 0),
+		tileWorldPos(2, -7) + Vector3.new(0, 1, 0),
+		tileWorldPos(2, -9) + Vector3.new(0, 1, 0),
+		tileWorldPos(2, -11) + Vector3.new(0, 1, 0),
+		tileWorldPos(1, -7) + Vector3.new(0, 1, 0),
+		tileWorldPos(3, -7) + Vector3.new(0, 1, 0),
+		tileWorldPos(2, -12) + Vector3.new(0, 1, 0),
+	}
+	for i, smokePos in smokePositions do
+		local emitterPart = Instance.new("Part")
+		emitterPart.Name = `FogEmitter_{i}`
+		emitterPart.Size = Vector3.new(1, 1, 1)
+		emitterPart.Position = smokePos
+		emitterPart.Anchored = true
+		emitterPart.Transparency = 1
+		emitterPart.CanCollide = false
+
+		local smoke = Instance.new("Smoke")
+		smoke.Color = Color3.fromRGB(15, 15, 20)
+		smoke.Opacity = 0.4
+		smoke.RiseVelocity = 0.5
+		smoke.Size = 12
+		smoke.Parent = emitterPart
+
+		emitterPart.Parent = warren
+	end
 
 	-- Air particle direction markers (always point toward exit)
 	for i = 1, 6 do
