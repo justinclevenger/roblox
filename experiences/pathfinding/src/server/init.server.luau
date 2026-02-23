@@ -9,13 +9,21 @@ local Pathfinding = require(ReplicatedStorage.Shared.Pathfinding)
 -- ── Generate the Asylum Map ──────────────────────────────────────────────
 print("[Server] Generating asylum map...")
 
-local mapData = MapGenerator.generate({
-	floors = 2,
-	gridWidth = 8,
-	gridDepth = 6,
-	seed = 42,
-})
+local ok, result = pcall(function()
+	return MapGenerator.generate({
+		floors = 2,
+		gridWidth = 8,
+		gridDepth = 6,
+		seed = 42,
+	})
+end)
 
+if not ok then
+	warn("[Server] MAP GENERATION FAILED: " .. tostring(result))
+	return
+end
+
+local mapData = result
 local _floorConnections = MapGenerator.getFloorConnections()
 
 print(
@@ -31,7 +39,6 @@ for i = 1, mapData.floorCount do
 end
 
 -- ── Spawn Players Inside the Lobby ───────────────────────────────────────
--- Find the lobby on floor 1 to set spawn position
 local SLOT_SIZE = 24
 local lobbySpawnPos: Vector3? = nil
 
@@ -49,10 +56,28 @@ local spawnLocation = workspace:FindFirstChild("SpawnLocation")
 if spawnLocation and lobbySpawnPos then
 	spawnLocation.Position = lobbySpawnPos
 	print(("[Server] Spawn set to lobby at %s"):format(tostring(lobbySpawnPos)))
+else
+	warn(
+		"[Server] Could not set spawn: SpawnLocation="
+			.. tostring(spawnLocation)
+			.. ", lobbyPos="
+			.. tostring(lobbySpawnPos)
+	)
+end
+
+-- Teleport player characters to lobby when they spawn (handles race condition)
+local function onCharacterAdded(character: Model)
+	if lobbySpawnPos then
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+		if rootPart then
+			task.wait(0.1)
+			local hrp = rootPart :: BasePart
+			hrp.CFrame = CFrame.new(lobbySpawnPos)
+		end
+	end
 end
 
 -- ── NPC Setup ────────────────────────────────────────────────────────────
--- Create a simple NPC that wanders the asylum
 local function createNPC(name: string, spawnPos: Vector3): Model
 	local npcModel = Instance.new("Model")
 	npcModel.Name = name
@@ -104,27 +129,25 @@ print("[Server] NPC spawned at stairwell")
 -- Simple wander loop for the NPC
 task.spawn(function()
 	local humanoid = npc:WaitForChild("Humanoid") :: Humanoid
-	local rootPart = npc:WaitForChild("HumanoidRootPart") :: BasePart
+	local npcRootPart = npc:WaitForChild("HumanoidRootPart") :: BasePart
 	humanoid.WalkSpeed = 8
 
 	while humanoid.Health > 0 do
-		-- Pick a random walkable position on floor 1
-		local target = Pathfinding.getRandomWalkablePosition(rootPart.Position, 15, 40)
+		local target = Pathfinding.getRandomWalkablePosition(npcRootPart.Position, 15, 40)
 		if target then
-			local rawPath = Pathfinding.findPath(rootPart.Position, target)
+			local rawPath = Pathfinding.findPath(npcRootPart.Position, target)
 			if rawPath then
 				local path = Pathfinding.smoothPath(rawPath, 4)
 				for _, waypoint in path do
 					humanoid:MoveTo(waypoint)
 					local startTime = tick()
-					while (rootPart.Position - waypoint).Magnitude > 5 and tick() - startTime < 3 do
+					while (npcRootPart.Position - waypoint).Magnitude > 5 and tick() - startTime < 3 do
 						task.wait(0.1)
 					end
 				end
 			end
 		end
 
-		-- Pause between wanders
 		task.wait(1 + math.random() * 2)
 	end
 end)
@@ -132,8 +155,24 @@ end)
 -- ── Player Join Handling ─────────────────────────────────────────────────
 Players.PlayerAdded:Connect(function(player: Player)
 	print(("[Server] %s joined the asylum"):format(player.Name))
+	-- Teleport character to lobby on spawn
+	player.CharacterAdded:Connect(onCharacterAdded)
+	-- Handle if character already exists
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
 end)
+
+-- Handle players already in the game (joined during generation)
+for _, player in Players:GetPlayers() do
+	player.CharacterAdded:Connect(onCharacterAdded)
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
+end
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	print(("[Server] %s left the asylum"):format(player.Name))
 end)
+
+print("[Server] Asylum server ready!")

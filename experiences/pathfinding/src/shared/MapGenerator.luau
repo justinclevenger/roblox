@@ -1476,6 +1476,11 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 	local stairZ = rng:NextInteger(3, math.max(3, gridDepth - 2))
 	mapData.stairwellPos = { x = stairX, z = stairZ }
 
+	print(
+		("[MapGen] Starting generation: %d floors, %dx%d grid, seed=%d"):format(floorCount, gridWidth, gridDepth, seed)
+	)
+	print(("[MapGen] Stairwell at grid (%d, %d)"):format(stairX, stairZ))
+
 	-- Generate each floor
 	for floorIndex = 1, floorCount do
 		local floor = {
@@ -1512,6 +1517,17 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 		-- Step 10: Place furniture
 		placeFurniture(floor, rng)
 
+		print(("[MapGen]   Floor %d: %d rooms, %d doors total"):format(
+			floorIndex,
+			#floor.rooms,
+			(function()
+				local count = 0
+				for _, room in floor.rooms do
+					count += #room.doors
+				end
+				return count
+			end)()
+		))
 		table.insert(mapData.floors, floor)
 	end
 
@@ -1528,6 +1544,8 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 		if not isTopFloor then
 			buildStaircase(floorFolder, stairX, stairZ, floorIndex)
 		end
+
+		print(("[MapGen]   Floor %d built: %d parts"):format(floorIndex, #floorFolder:GetChildren()))
 	end
 
 	-- Step 12: Build exterior shell
@@ -1535,18 +1553,23 @@ function MapGenerator.generate(config: { floors: number?, gridWidth: number?, gr
 	exteriorFolder.Name = "Exterior"
 	exteriorFolder.Parent = generatedParts
 	buildExterior(exteriorFolder, gridWidth, gridDepth, floorCount, rng)
+	print(("[MapGen] Exterior built: %d parts"):format(#exteriorFolder:GetChildren()))
 
 	-- Step 13: Build forest
 	local forestFolder = Instance.new("Folder")
 	forestFolder.Name = "Forest"
 	forestFolder.Parent = generatedParts
 	buildForest(forestFolder, gridWidth, gridDepth, rng)
+	print(("[MapGen] Forest built: %d parts"):format(#forestFolder:GetChildren()))
 
 	-- Step 14: Add rain
 	local weatherFolder = Instance.new("Folder")
 	weatherFolder.Name = "Weather"
 	weatherFolder.Parent = generatedParts
 	buildRain(weatherFolder, gridWidth, gridDepth)
+	print("[MapGen] Rain emitter created")
+
+	print(("[MapGen] Generation complete! Total parts: %d"):format(#generatedParts:GetDescendants()))
 
 	return mapData
 end
