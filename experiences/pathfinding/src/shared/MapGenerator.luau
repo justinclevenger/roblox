@@ -1163,10 +1163,26 @@ local function buildFloorParts(
 					continue
 				end
 
+				-- Determine wall color: use the larger room's color for consistency
+				local useWallColor = wallColor
+				local useWallMaterial = template.wallMaterial
+				if neighborExists then
+					local neighborCell = grid[nx][nz]
+					local neighborRoom = floor.rooms[neighborCell.roomId]
+					if #neighborRoom.cells > #room.cells then
+						local neighborCondition = neighborRoom.condition or "normal"
+						useWallColor = getRoomColor(neighborCell.roomType, neighborCondition)
+						local neighborTemplate = RoomTemplates.templates[neighborCell.roomType]
+						if neighborTemplate then
+							useWallMaterial = neighborTemplate.wallMaterial
+						end
+					end
+				end
+
 				if hasDoor then
-					buildDoorFrame(parent, x, z, floorIndex, dir, template.wallMaterial, wallColor)
+					buildDoorFrame(parent, x, z, floorIndex, dir, useWallMaterial, useWallColor)
 				else
-					buildWall(parent, x, z, floorIndex, dir, template.wallMaterial, wallColor)
+					buildWall(parent, x, z, floorIndex, dir, useWallMaterial, useWallColor)
 				end
 			end
 
@@ -1350,6 +1366,30 @@ local function buildExteriorSegment(
 			)
 		end
 	end
+
+	-- Glass pane in window opening
+	local glassColor = Color3.fromRGB(180, 200, 220)
+	local glass: Part
+	if isNorthSouth then
+		glass = makePart(
+			parent,
+			"WindowGlass",
+			Vector3.new(winWidth, winHeight, WALL_THICKNESS * 0.3),
+			Vector3.new(centerAlongWall, floorY + sillHeight + winHeight / 2, wallPerpPos),
+			Enum.Material.Glass,
+			glassColor
+		)
+	else
+		glass = makePart(
+			parent,
+			"WindowGlass",
+			Vector3.new(WALL_THICKNESS * 0.3, winHeight, winWidth),
+			Vector3.new(wallPerpPos, floorY + sillHeight + winHeight / 2, centerAlongWall),
+			Enum.Material.Glass,
+			glassColor
+		)
+	end
+	glass.Transparency = 0.6
 end
 
 --- Build exterior walls, roof, and ground around the building
