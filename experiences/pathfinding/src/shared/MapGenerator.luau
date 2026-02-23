@@ -833,8 +833,10 @@ local function buildWall(
 	floorIndex: number,
 	dir: string,
 	material: Enum.Material,
-	color: Color3
+	color: Color3,
+	inset: number?
 )
+	local offset = inset or 0
 	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
 	local floorY = worldPos.Y
 	local wallCenterY = floorY + FLOOR_HEIGHT / 2
@@ -844,16 +846,16 @@ local function buildWall(
 
 	if dir == "north" then
 		size = Vector3.new(SLOT_SIZE, FLOOR_HEIGHT, WALL_THICKNESS)
-		position = Vector3.new(worldPos.X, wallCenterY, worldPos.Z - SLOT_SIZE / 2)
+		position = Vector3.new(worldPos.X, wallCenterY, worldPos.Z - SLOT_SIZE / 2 + offset)
 	elseif dir == "south" then
 		size = Vector3.new(SLOT_SIZE, FLOOR_HEIGHT, WALL_THICKNESS)
-		position = Vector3.new(worldPos.X, wallCenterY, worldPos.Z + SLOT_SIZE / 2)
+		position = Vector3.new(worldPos.X, wallCenterY, worldPos.Z + SLOT_SIZE / 2 - offset)
 	elseif dir == "east" then
 		size = Vector3.new(WALL_THICKNESS, FLOOR_HEIGHT, SLOT_SIZE)
-		position = Vector3.new(worldPos.X + SLOT_SIZE / 2, wallCenterY, worldPos.Z)
+		position = Vector3.new(worldPos.X + SLOT_SIZE / 2 - offset, wallCenterY, worldPos.Z)
 	elseif dir == "west" then
 		size = Vector3.new(WALL_THICKNESS, FLOOR_HEIGHT, SLOT_SIZE)
-		position = Vector3.new(worldPos.X - SLOT_SIZE / 2, wallCenterY, worldPos.Z)
+		position = Vector3.new(worldPos.X - SLOT_SIZE / 2 + offset, wallCenterY, worldPos.Z)
 	end
 
 	makePart(parent, "Wall_" .. dir, size, position, material, color)
@@ -874,8 +876,10 @@ local function buildDoorFrame(
 	floorIndex: number,
 	dir: string,
 	material: Enum.Material,
-	color: Color3
+	color: Color3,
+	inset: number?
 )
+	local offset = inset or 0
 	local worldPos = gridToWorld(gridX, gridZ, floorIndex)
 	local floorY = worldPos.Y
 	local doorWidth = 6
@@ -884,9 +888,9 @@ local function buildDoorFrame(
 	if dir == "north" or dir == "south" then
 		local wallZ
 		if dir == "north" then
-			wallZ = worldPos.Z - SLOT_SIZE / 2
+			wallZ = worldPos.Z - SLOT_SIZE / 2 + offset
 		else
-			wallZ = worldPos.Z + SLOT_SIZE / 2
+			wallZ = worldPos.Z + SLOT_SIZE / 2 - offset
 		end
 
 		-- Left wall segment
@@ -924,9 +928,9 @@ local function buildDoorFrame(
 	elseif dir == "east" or dir == "west" then
 		local wallX
 		if dir == "east" then
-			wallX = worldPos.X + SLOT_SIZE / 2
+			wallX = worldPos.X + SLOT_SIZE / 2 - offset
 		else
-			wallX = worldPos.X - SLOT_SIZE / 2
+			wallX = worldPos.X - SLOT_SIZE / 2 + offset
 		end
 
 		-- Left (north side) wall segment
@@ -1152,37 +1156,18 @@ local function buildFloorParts(
 				end
 
 				-- Skip walls at grid boundary (exterior shell handles perimeter)
-				local neighborInBounds = inBounds(grid, nx, nz)
-				if not neighborInBounds then
+				if not inBounds(grid, nx, nz) then
 					continue
 				end
 
-				-- Avoid duplicate walls: only build shared interior edges from one side
-				local neighborExists = grid[nx][nz] ~= false
-				if neighborExists and (dir == "west" or dir == "north") then
-					continue
-				end
-
-				-- Determine wall color: use the larger room's color for consistency
-				local useWallColor = wallColor
-				local useWallMaterial = template.wallMaterial
-				if neighborExists then
-					local neighborCell = grid[nx][nz]
-					local neighborRoom = floor.rooms[neighborCell.roomId]
-					if #neighborRoom.cells > #room.cells then
-						local neighborCondition = neighborRoom.condition or "normal"
-						useWallColor = getRoomColor(neighborCell.roomType, neighborCondition)
-						local neighborTemplate = RoomTemplates.templates[neighborCell.roomType]
-						if neighborTemplate then
-							useWallMaterial = neighborTemplate.wallMaterial
-						end
-					end
-				end
+				-- Each room builds its own wall on its interior side, offset inward
+				-- so adjacent rooms each see their own color/material
+				local wallInset = WALL_THICKNESS / 2
 
 				if hasDoor then
-					buildDoorFrame(parent, x, z, floorIndex, dir, useWallMaterial, useWallColor)
+					buildDoorFrame(parent, x, z, floorIndex, dir, template.wallMaterial, wallColor, wallInset)
 				else
-					buildWall(parent, x, z, floorIndex, dir, useWallMaterial, useWallColor)
+					buildWall(parent, x, z, floorIndex, dir, template.wallMaterial, wallColor, wallInset)
 				end
 			end
 
