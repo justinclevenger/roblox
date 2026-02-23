@@ -1176,15 +1176,16 @@ local function buildFloorParts(
 			local slabSizeZ = zMax - zMin
 			local slabCenterX = (xMin + xMax) / 2
 			local slabCenterZ = (zMin + zMax) / 2
-			local floorY = worldPos.Y - 0.5
+			local floorThickness = 0.2
+			local floorY = worldPos.Y - floorThickness / 2
 
-			-- Build floor slab (inset to fit within walls)
+			-- Build floor slab (thin, top surface flush with worldPos.Y)
 			-- Skip stairwell on floors above 1 so the shaft stays open
 			if cellData.roomType ~= "Stairwell" or floorIndex == 1 then
 				local floorPart = makePart(
 					parent,
 					"Floor",
-					Vector3.new(slabSizeX, 1, slabSizeZ),
+					Vector3.new(slabSizeX, floorThickness, slabSizeZ),
 					Vector3.new(slabCenterX, floorY, slabCenterZ),
 					template.floorMaterial,
 					floorColor
@@ -1192,12 +1193,12 @@ local function buildFloorParts(
 				floorPart:SetAttribute("RoomType", cellData.roomType)
 			end
 
-			-- Thin ceiling slab matching the room's floor color, positioned just
-			-- below the floor slab of the level above (or the roof on top floor).
+			-- Thin ceiling slab matching the room's floor color, positioned
+			-- well below the floor slab of the level above.
 			-- Skip stairwells so the shaft stays open.
 			if cellData.roomType ~= "Stairwell" then
 				local ceilingThickness = 0.1
-				local ceilingTopY = worldPos.Y + FLOOR_HEIGHT - 1.1 -- small gap below floor above
+				local ceilingTopY = worldPos.Y + FLOOR_HEIGHT - 0.5 -- clear of floor above
 				local ceilingCenterY = ceilingTopY - ceilingThickness / 2
 				makePart(
 					parent,
@@ -1667,15 +1668,15 @@ local function buildRain(parent: Instance, gridWidth: number, gridDepth: number)
 
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "Rain"
-	emitter.Rate = 500
-	emitter.Lifetime = NumberRange.new(2, 3)
-	emitter.Speed = NumberRange.new(40, 50)
+	emitter.Rate = 3000
+	emitter.Lifetime = NumberRange.new(2, 4)
+	emitter.Speed = NumberRange.new(50, 65)
 	emitter.EmissionDirection = Enum.NormalId.Bottom
 	emitter.SpreadAngle = Vector2.new(5, 5)
 	emitter.Color = ColorSequence.new(Color3.fromRGB(180, 190, 200))
 	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.1),
-		NumberSequenceKeypoint.new(1, 0.05),
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 0.08),
 	})
 	emitter.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.3),
