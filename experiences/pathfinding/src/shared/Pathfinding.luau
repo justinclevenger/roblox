@@ -66,6 +66,26 @@ local function isWalkable(position: Vector3): boolean
 	return false -- No ground found
 end
 
+-- Check if direct movement between two adjacent grid cells is unobstructed (no walls between them)
+local function isMovementClear(from: Vector3, to: Vector3): boolean
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = {}
+	rayParams.RespectCanCollide = true
+
+	-- Raycast horizontally at two heights to catch walls and low barriers
+	for _, height in { 1, 3 } do
+		local origin = from + Vector3.new(0, height, 0)
+		local goal = to + Vector3.new(0, height, 0)
+		local result = workspace:Raycast(origin, goal - origin, rayParams)
+		if result then
+			return false -- Wall or obstacle between the two cells
+		end
+	end
+
+	return true
+end
+
 -- MinHeap for the open set (priority queue)
 local MinHeap = {}
 MinHeap.__index = MinHeap
@@ -180,7 +200,7 @@ function Pathfinding.findPath(startPos: Vector3, targetPos: Vector3): { Vector3 
 			local neighborPos = current.position + dir * GRID_SIZE
 			local neighborKey = toKey(neighborPos)
 
-			if not closedSet[neighborKey] and isWalkable(neighborPos) then
+			if not closedSet[neighborKey] and isWalkable(neighborPos) and isMovementClear(current.position, neighborPos) then
 				local moveCost = dir.Magnitude * GRID_SIZE -- Diagonal costs more
 				local tentativeG = gScore[currentKey] + moveCost
 
