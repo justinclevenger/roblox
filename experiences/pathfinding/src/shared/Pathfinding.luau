@@ -164,6 +164,9 @@ end
 function Pathfinding.findPath(startPos: Vector3, targetPos: Vector3): { Vector3 }?
 	local start = toGrid(startPos)
 	local goal = toGrid(targetPos)
+	-- A* only moves on the XZ plane (all directions have Y=0),
+	-- so the goal Y must match the start Y to be reachable
+	goal = Vector3.new(goal.X, start.Y, goal.Z)
 
 	local openSet = MinHeap.new()
 	local closedSet = {}
