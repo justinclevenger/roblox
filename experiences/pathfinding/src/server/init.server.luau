@@ -182,13 +182,17 @@ task.spawn(function()
 	local humanoid = npc:WaitForChild("Humanoid") :: Humanoid
 	local npcRootPart = npc:WaitForChild("HumanoidRootPart") :: BasePart
 
+	-- Wait for map geometry to fully load before pathfinding
+	task.wait(2)
+	print(("[NPC] Starting behavior loop at position %s"):format(tostring(npcRootPart.Position)))
+
 	while humanoid.Health > 0 do
 		local closestTarget, dist = findClosestPlayer(npcRootPart.Position, DETECT_RANGE)
 
 		if closestTarget and dist <= DETECT_RANGE then
 			-- PURSUE
 			humanoid.WalkSpeed = PURSUE_SPEED
-			print("[NPC] Pursuing player!")
+			print(("[NPC] Pursuing player at distance %.1f"):format(dist))
 
 			while humanoid.Health > 0 do
 				local target = closestTarget :: BasePart
@@ -200,6 +204,13 @@ task.spawn(function()
 					walkWaypoints(humanoid, npcRootPart, path, function()
 						return tick() - pursueStart >= REPATH_INTERVAL
 					end)
+				else
+					print(
+						("[NPC] PURSUE path failed: from %s to %s"):format(
+							tostring(npcRootPart.Position),
+							tostring(target.Position)
+						)
+					)
 				end
 
 				-- Re-check target validity
@@ -236,7 +247,16 @@ task.spawn(function()
 						local nearby, _ = findClosestPlayer(npcRootPart.Position, DETECT_RANGE)
 						return nearby ~= nil
 					end)
+				else
+					print(
+						("[NPC] WANDER path failed: from %s to %s"):format(
+							tostring(npcRootPart.Position),
+							tostring(wanderTarget)
+						)
+					)
 				end
+			else
+				print(("[NPC] No walkable position found near %s"):format(tostring(npcRootPart.Position)))
 			end
 
 			task.wait(1 + math.random() * 2)

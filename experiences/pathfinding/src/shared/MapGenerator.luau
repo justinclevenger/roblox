@@ -1614,6 +1614,39 @@ local function buildExterior(parent: Instance, gridWidth: number, gridDepth: num
 						extColor
 					)
 				end
+
+				-- Physical entrance door (player can click to open)
+				local doorHeight = 10
+				local doorPart = Instance.new("Part")
+				doorPart.Name = "EntranceDoor"
+				doorPart.Size = Vector3.new(entranceWidth, doorHeight, WALL_THICKNESS + 0.2)
+				doorPart.Position = Vector3.new(centerX_cell, floorY + doorHeight / 2, buildingDepth)
+				doorPart.Anchored = true
+				doorPart.CanCollide = true
+				doorPart.Material = Enum.Material.Wood
+				doorPart.Color = Color3.fromRGB(60, 40, 25)
+				doorPart.Parent = parent
+
+				local clickDetector = Instance.new("ClickDetector")
+				clickDetector.MaxActivationDistance = 12
+				clickDetector.Parent = doorPart
+
+				clickDetector.MouseClick:Connect(function(_player)
+					if not doorPart.Parent then return end
+					-- Swing open: tween the door to the side
+					local tweenService = game:GetService("TweenService")
+					local openCFrame = doorPart.CFrame
+						* CFrame.new(entranceWidth / 2, 0, -entranceWidth / 2)
+						* CFrame.Angles(0, math.rad(-90), 0)
+						* CFrame.new(-entranceWidth / 2, 0, 0)
+					local tween = tweenService:Create(
+						doorPart,
+						TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+						{ CFrame = openCFrame }
+					)
+					doorPart.CanCollide = false
+					tween:Play()
+				end)
 			else
 				local hasWindow = (cellIdx % 2 == 0)
 				buildExteriorSegment(parent, centerX_cell, buildingDepth, floorIndex, hasWindow, true, extColor)
