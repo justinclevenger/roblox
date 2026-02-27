@@ -6,6 +6,7 @@ local Pathfinding = {}
 -- Configuration
 local GRID_SIZE = 4 -- Size of each grid cell in studs
 local MAX_ITERATIONS = 5000 -- Safety limit to prevent infinite loops
+local filterInstances: { Instance } = {} -- Instances to exclude from raycasts (e.g. the NPC itself)
 local DIRECTIONS = {
 	Vector3.new(1, 0, 0),
 	Vector3.new(-1, 0, 0),
@@ -40,7 +41,7 @@ end
 local function isWalkable(position: Vector3): boolean
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = {}
+	rayParams.FilterDescendantsInstances = filterInstances
 	rayParams.RespectCanCollide = true -- ignore non-collidable parts (trim, decor)
 
 	-- Check for ground below this cell
@@ -70,7 +71,7 @@ end
 local function isMovementClear(from: Vector3, to: Vector3): boolean
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = {}
+	rayParams.FilterDescendantsInstances = filterInstances
 	rayParams.RespectCanCollide = true
 
 	-- Raycast horizontally at two heights to catch walls and low barriers
@@ -155,6 +156,11 @@ end
 --- @param startPos Vector3 -- World position to start from
 --- @param targetPos Vector3 -- World position to reach
 --- @return { Vector3 }? -- Array of waypoints, or nil if no path found
+--- Set instances to exclude from all pathfinding raycasts (e.g. the NPC's own model)
+function Pathfinding.setFilterInstances(instances: { Instance })
+	filterInstances = instances
+end
+
 function Pathfinding.findPath(startPos: Vector3, targetPos: Vector3): { Vector3 }?
 	local start = toGrid(startPos)
 	local goal = toGrid(targetPos)
@@ -247,7 +253,7 @@ function Pathfinding.smoothPath(path: { Vector3 }, subdivisions: number?): { Vec
 
 			local rayParams = RaycastParams.new()
 			rayParams.FilterType = Enum.RaycastFilterType.Exclude
-			rayParams.FilterDescendantsInstances = {}
+			rayParams.FilterDescendantsInstances = filterInstances
 
 			local result = workspace:Raycast(origin, dir, rayParams)
 			if not result then
@@ -355,7 +361,7 @@ function Pathfinding.isPathValid(path: { Vector3 }, fromIndex: number): boolean
 			local direction = (path[i + 1] - path[i])
 			local rayParams = RaycastParams.new()
 			rayParams.FilterType = Enum.RaycastFilterType.Exclude
-			rayParams.FilterDescendantsInstances = {}
+			rayParams.FilterDescendantsInstances = filterInstances
 
 			local result = workspace:Raycast(origin, direction, rayParams)
 			if result then

@@ -182,8 +182,11 @@ task.spawn(function()
 	local humanoid = npc:WaitForChild("Humanoid") :: Humanoid
 	local npcRootPart = npc:WaitForChild("HumanoidRootPart") :: BasePart
 
+	-- Exclude the NPC model from pathfinding raycasts so it doesn't block itself
+	Pathfinding.setFilterInstances({ npc })
+
 	-- Wait for map geometry to fully load before pathfinding
-	task.wait(2)
+	task.wait(1)
 	print(("[NPC] Starting behavior loop at position %s"):format(tostring(npcRootPart.Position)))
 
 	while humanoid.Health > 0 do
