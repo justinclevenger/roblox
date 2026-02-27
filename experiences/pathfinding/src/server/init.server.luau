@@ -126,29 +126,121 @@ local stairWorldPos = Vector3.new(
 local npc = createNPC("AsylumWanderer", stairWorldPos)
 print("[Server] NPC spawned at stairwell")
 
--- Simple wander loop for the NPC
+-- ── NPC Behavior Constants ───────────────────────────────────────────────
+local DETECT_RANGE = 40
+local LOSE_RANGE = 60
+local PURSUE_SPEED = 14
+local WANDER_SPEED = 8
+local REPATH_INTERVAL = 0.5
+local ARRIVAL_DISTANCE = 5
+local STUCK_TIMEOUT = 3
+
+-- ── Helpers ─────────────────────────────────────────────────────────────────
+local function findClosestPlayer(position: Vector3, maxRange: number): (BasePart?, number)
+	local closest: BasePart? = nil
+	local closestDist = maxRange
+
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		if not character then continue end
+
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		local hum = character:FindFirstChild("Humanoid") :: Humanoid?
+		if not hrp or not hum or (hum :: Humanoid).Health <= 0 then continue end
+
+		local dist = ((hrp :: BasePart).Position - position).Magnitude
+		if dist < closestDist then
+			closestDist = dist
+			closest = hrp :: BasePart
+		end
+	end
+
+	return closest, closestDist
+end
+
+local function walkWaypoints(
+	humanoid: Humanoid,
+	npcRootPart: BasePart,
+	path: { Vector3 },
+	shouldAbort: (() -> boolean)?
+): boolean
+	for _, waypoint in path do
+		humanoid:MoveTo(waypoint)
+		local startTime = tick()
+		while (npcRootPart.Position - waypoint).Magnitude > ARRIVAL_DISTANCE and tick() - startTime < STUCK_TIMEOUT do
+			if shouldAbort and shouldAbort() then
+				return false
+			end
+			task.wait(0.1)
+		end
+	end
+	return true
+end
+
+-- ── WANDER / PURSUE State Machine ──────────────────────────────────────────
 task.spawn(function()
 	local humanoid = npc:WaitForChild("Humanoid") :: Humanoid
 	local npcRootPart = npc:WaitForChild("HumanoidRootPart") :: BasePart
-	humanoid.WalkSpeed = 8
 
 	while humanoid.Health > 0 do
-		local target = Pathfinding.getRandomWalkablePosition(npcRootPart.Position, 15, 40)
-		if target then
-			local rawPath = Pathfinding.findPath(npcRootPart.Position, target)
-			if rawPath then
-				local path = Pathfinding.smoothPath(rawPath, 4)
-				for _, waypoint in path do
-					humanoid:MoveTo(waypoint)
-					local startTime = tick()
-					while (npcRootPart.Position - waypoint).Magnitude > 5 and tick() - startTime < 3 do
-						task.wait(0.1)
-					end
+		local closestTarget, dist = findClosestPlayer(npcRootPart.Position, DETECT_RANGE)
+
+		if closestTarget and dist <= DETECT_RANGE then
+			-- PURSUE
+			humanoid.WalkSpeed = PURSUE_SPEED
+			print("[NPC] Pursuing player!")
+
+			while humanoid.Health > 0 do
+				local target = closestTarget :: BasePart
+				local rawPath = Pathfinding.findPath(npcRootPart.Position, target.Position)
+				if rawPath then
+					local path = Pathfinding.smoothPath(rawPath, 4)
+					local pursueStart = tick()
+
+					walkWaypoints(humanoid, npcRootPart, path, function()
+						return tick() - pursueStart >= REPATH_INTERVAL
+					end)
+				end
+
+				-- Re-check target validity
+				if not target.Parent then break end
+				local character = target.Parent
+				local hum = character:FindFirstChild("Humanoid") :: Humanoid?
+				if not hum or (hum :: Humanoid).Health <= 0 then break end
+
+				local currentDist = (npcRootPart.Position - target.Position).Magnitude
+				if currentDist > LOSE_RANGE then
+					print("[NPC] Lost player, returning to wander")
+					break
+				end
+
+				-- Check if a different player is now closer
+				local newTarget, newDist = findClosestPlayer(npcRootPart.Position, DETECT_RANGE)
+				if newTarget and newDist < currentDist then
+					closestTarget = newTarget
+				end
+
+				task.wait(REPATH_INTERVAL)
+			end
+
+			humanoid.WalkSpeed = WANDER_SPEED
+		else
+			-- WANDER
+			humanoid.WalkSpeed = WANDER_SPEED
+			local wanderTarget = Pathfinding.getRandomWalkablePosition(npcRootPart.Position, 15, 40)
+			if wanderTarget then
+				local rawPath = Pathfinding.findPath(npcRootPart.Position, wanderTarget)
+				if rawPath then
+					local path = Pathfinding.smoothPath(rawPath, 4)
+					walkWaypoints(humanoid, npcRootPart, path, function()
+						local nearby, _ = findClosestPlayer(npcRootPart.Position, DETECT_RANGE)
+						return nearby ~= nil
+					end)
 				end
 			end
-		end
 
-		task.wait(1 + math.random() * 2)
+			task.wait(1 + math.random() * 2)
+		end
 	end
 end)
 
